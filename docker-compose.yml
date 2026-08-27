@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16
+    container_name: friday-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: friday_db
+      POSTGRES_USER: friday_user
+      POSTGRES_PASSWORD: friday_password
+
+    ports:
+      - "5434:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
