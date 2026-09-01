@@ -1,4 +1,5 @@
 from django.urls import include, path
+
 from rest_framework.routers import DefaultRouter
 
 from .views import (
@@ -7,16 +8,46 @@ from .views import (
 )
 
 
+# ==================================================
+# ROUTER
+# ==================================================
+
 router = DefaultRouter()
 
-router.register("tasks", TaskViewSet, basename="task")
 router.register(
-    "availability",
-    TaskAvailabilityReportViewSet,
-    basename="availability",
+    "tasks",
+    TaskViewSet,
+    basename="task",
 )
 
 
+# ==================================================
+# URLS
+# ==================================================
+
 urlpatterns = [
-    path("", include(router.urls)),
+
+    # ----------------------------------------------
+    # Disponibilité
+    # IMPORTANT : avant les routes dynamiques tasks
+    # ----------------------------------------------
+
+    path(
+        "tasks/availability/",
+        TaskAvailabilityReportViewSet.as_view({
+            "get": "list",
+            "post": "create",
+        }),
+        name="task-availability",
+    ),
+
+    # ----------------------------------------------
+    # Tâches
+    # ----------------------------------------------
+
+    path(
+        "",
+        include(router.urls),
+    ),
+
 ]
