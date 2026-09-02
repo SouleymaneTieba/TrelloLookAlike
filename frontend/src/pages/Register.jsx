@@ -91,69 +91,73 @@ function Register() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050A0C] px-4 py-10">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0E171A] px-4 py-6 sm:p-8 lg:p-10">
 
       {/* Decorative glow */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#B6FF00]/5 blur-3xl" />
+      <div className="pointer-events-none absolute -left-20 -top-20 h-[440px] w-[440px] rounded-full bg-[#B6FF00]/8 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -right-16 h-[500px] w-[500px] rounded-full bg-[#B6FF00]/8 blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#B6FF00]/3 blur-3xl" />
 
-      <div className="relative w-full max-w-lg">
+      <main className="relative grid w-full max-w-[1500px] overflow-hidden rounded-3xl border border-[#1C292D] bg-[#0B1215] shadow-2xl lg:min-h-[780px] lg:grid-cols-[minmax(0,0.85fr)_minmax(580px,1.15fr)]">
 
-        {/* Logo */}
-        <div className="mb-8 text-center">
+        <section className="flex flex-col justify-center bg-[#0B1215] p-7 sm:p-10 lg:px-[14%] lg:py-14">
 
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#152400]">
+          <div className="mb-10 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#152400]">
+              <span className="text-xl font-bold text-[#B6FF00]">
+                F
+              </span>
+            </div>
 
-            <span className="text-2xl font-bold text-[#B6FF00]">
-              F
-            </span>
-
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-[#B6FF00]">
+                Trell
+              </h1>
+              <p className="text-xs text-[#647276]">
+                Project Management
+              </p>
+            </div>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-[#B6FF00]">
-            Trell 
-          </h1>
-
-          <p className="mt-2 text-sm text-[#647276]">
-            Project Management
-          </p>
-
-        </div>
-
-        {/* Card */}
-        <div className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-8 shadow-2xl">
-
-          {/* Header */}
-          <div className="mb-7">
-
+          <div>
             <h2 className="text-2xl font-semibold text-[#F1F5F2]">
-              Créer un compte
+              Rejoignez votre équipe
             </h2>
-
             <p className="mt-2 text-sm text-[#94A3A6]">
-              Rejoignez votre espace de travail.
+              Créez votre compte et commencez à organiser votre travail en équipe.
             </p>
-
           </div>
+        </section>
 
-          {/* Error */}
-          {error && (
-            <div className="mb-5 rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400">
-              {error}
+        <section className="flex items-center justify-center bg-[#0B1215]/90 p-6 sm:p-8 lg:p-10">
+          <div className="w-full max-w-xl rounded-3xl border border-[#1C292D] bg-[#0B1215] p-8 shadow-2xl">
+
+            <div className="mb-7">
+              <h2 className="text-2xl font-semibold text-[#F1F5F2]">
+                Créer un compte
+              </h2>
+
+              <p className="mt-2 text-sm text-[#94A3A6]">
+                Rejoignez votre espace de travail.
+              </p>
             </div>
-          )}
 
-          {/* Success */}
-          {success && (
-            <div className="mb-5 rounded-xl border border-[#304800] bg-[#152400] px-4 py-3 text-sm text-[#B6FF00]">
-              {success}
-            </div>
-          )}
+            {error && (
+              <div className="mb-5 rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
 
-          {/* Form */}
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-5"
-          >
+            {success && (
+              <div className="mb-5 rounded-xl border border-[#304800] bg-[#152400] px-4 py-3 text-sm text-[#B6FF00]">
+                {success}
+              </div>
+            )}
+
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-5"
+            >
 
             {/* First / Last name */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -359,35 +363,30 @@ function Register() {
 
             </button>
 
-          </form>
+            </form>
 
-          {/* Login */}
-          <div className="mt-7 border-t border-[#1C292D] pt-6 text-center">
+            <div className="mt-7 border-t border-[#1C292D] pt-6 text-center">
 
-            <p className="text-sm text-[#647276]">
-              Vous avez déjà un compte ?
-            </p>
+              <p className="text-sm text-[#647276]">
+                Vous avez déjà un compte ?
+              </p>
 
-            <Link
-              to="/login"
-              className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#B6FF00] transition hover:text-[#C4FF33]"
-            >
-              Se connecter
+              <Link
+                to="/login"
+                className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#B6FF00] transition hover:text-[#C4FF33]"
+              >
+                Se connecter
 
-              <ArrowRight size={15} />
+                <ArrowRight size={15} />
 
-            </Link>
+              </Link>
+
+            </div>
 
           </div>
+        </section>
 
-        </div>
-
-        {/* Footer */}
-        <p className="mt-6 text-center text-xs text-[#47565A]">
-          Trell  Project Manager
-        </p>
-
-      </div>
+      </main>
 
     </div>
   );

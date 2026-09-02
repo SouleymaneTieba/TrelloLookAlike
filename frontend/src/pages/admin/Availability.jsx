@@ -87,7 +87,7 @@ function Availability() {
 
       const response =
         await api.patch(
-          `/availability/${report.id}/`,
+          `/tasks/availability/${report.id}/`,
           {
             status: "RESOLVED",
           }
@@ -137,7 +137,7 @@ function Availability() {
 
       const response =
         await api.patch(
-          `/availability/${report.id}/`,
+          `/tasks/availability/${report.id}/`,
           {
             status: "ACTIVE",
           }

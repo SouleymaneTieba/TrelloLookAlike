@@ -205,9 +205,19 @@ function Tasks() {
         projectsResponse.data
       );
 
-      setTeams(
-        teamsResponse.data
-      );
+      const allTeams =
+        teamsResponse.data;
+
+      const userTeams =
+        allTeams.filter((team) =>
+          team.members?.some(
+            (member) =>
+              member.user === user?.id &&
+              member.is_active
+          )
+        );
+
+      setTeams(allTeams);
 
 
       // --------------------------------------
@@ -232,7 +242,7 @@ function Tasks() {
 
 
       // --------------------------------------
-      // Restaurer l'équipe
+      // Restaurer / préremplir l'équipe
       // --------------------------------------
 
       if (myActiveReport?.team) {
@@ -240,6 +250,17 @@ function Tasks() {
         setAvailabilityTeam(
           String(
             myActiveReport.team
+          )
+        );
+
+      } else if (
+        !availabilityTeam &&
+        userTeams.length > 0
+      ) {
+
+        setAvailabilityTeam(
+          String(
+            userTeams[0].id
           )
         );
 
@@ -487,15 +508,12 @@ function Tasks() {
       };
 
 
-      if (
-        canAssignTasks &&
-        formData.assigned_to
-      ) {
+      if (canAssignTasks) {
 
         payload.assigned_to =
-          Number(
-            formData.assigned_to
-          );
+          formData.assigned_to
+            ? Number(formData.assigned_to)
+            : null;
 
       }
 
@@ -912,12 +930,20 @@ function Tasks() {
     }
 
 
-    if (isProjectManager) {
+    return (
+      task.created_by === user?.id
+    );
+
+  };
+
+  const canCompleteTask = (task) => {
+
+    if (isAdmin) {
       return true;
     }
 
-
     return (
+      task.assigned_to === user?.id ||
       task.created_by === user?.id
     );
 
@@ -935,13 +961,36 @@ function Tasks() {
       // Vérifier l'équipe
       // --------------------------------------
 
-      if (!availabilityTeam) {
+      const memberTeams =
+        teams.filter((team) =>
+          team.members?.some(
+            (member) =>
+              member.user === user?.id &&
+              member.is_active
+          )
+        );
+
+      const teamId = availabilityTeam || (
+        memberTeams.length > 0
+          ? String(memberTeams[0].id)
+          : ""
+      );
+
+      if (!teamId) {
 
         setError(
-          "Veuillez sélectionner une équipe."
+          "Vous devez appartenir à une équipe pour signaler votre disponibilité."
         );
 
         return;
+      }
+
+      if (!availabilityTeam && teamId) {
+
+        setAvailabilityTeam(
+          teamId
+        );
+
       }
 
 
@@ -969,7 +1018,7 @@ function Tasks() {
             {
               team:
                 Number(
-                  availabilityTeam
+                  teamId
                 ),
 
               message:
@@ -1454,7 +1503,8 @@ function Tasks() {
                       disabled={
                         isDone ||
                         isUpdating ||
-                        isDeleting
+                        isDeleting ||
+                        !canCompleteTask(task)
                       }
                       className={`mt-1 shrink-0 transition ${
                         isDone
@@ -1635,7 +1685,7 @@ function Tasks() {
                       )}
 
 
-                      {!isDone && (
+                      {!isDone && canCompleteTask(task) && (
 
                         <button
                           onClick={() =>
@@ -1787,40 +1837,15 @@ function Tasks() {
 
             <div>
 
-              <label className="mb-2 block text-xs font-medium text-[#94A3A6]">
+              <span className="block text-xs font-medium text-[#94A3A6]">
                 Équipe
-              </label>
+              </span>
 
-
-              <select
-                value={availabilityTeam}
-                onChange={(event) =>
-                  setAvailabilityTeam(
-                    event.target.value
-                  )
-                }
-                className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
-              >
-
-                <option value="">
-                  Sélectionner une équipe
-                </option>
-
-
-                {teams.map((team) => (
-
-                  <option
-                    key={team.id}
-                    value={team.id}
-                  >
-
-                    {team.name}
-
-                  </option>
-
-                ))}
-
-              </select>
+              <div className="mt-2 rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2]">
+                {teams.find(
+                  (team) => String(team.id) === availabilityTeam
+                )?.name || "Équipe de votre adhésion"}
+              </div>
 
             </div>
 

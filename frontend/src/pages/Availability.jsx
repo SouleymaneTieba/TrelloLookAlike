@@ -57,13 +57,17 @@ function Availability() {
 
         api.get("/teams/"),
 
-        api.get("/availability/"),
+        api.get("/tasks/availability/"),
 
       ]);
 
-      setTeams(
-        teamsResponse.data
-      );
+      const userTeams = teamsResponse.data;
+
+      setTeams(userTeams);
+
+      if (userTeams.length > 0) {
+        setSelectedTeam(String(userTeams[0].id));
+      }
 
       setReports(
         reportsResponse.data
@@ -108,13 +112,8 @@ function Availability() {
 
 
     if (!selectedTeam) {
-
-      setError(
-        "Veuillez sélectionner une équipe."
-      );
-
+      setError("Vous n'appartenez à aucune équipe.");
       return;
-
     }
 
 
@@ -123,7 +122,7 @@ function Availability() {
       setSubmitting(true);
 
       await api.post(
-        "/availability/",
+        "/tasks/availability/",
         {
           team: Number(
             selectedTeam
@@ -137,8 +136,6 @@ function Availability() {
         "Votre disponibilité a bien été signalée."
       );
 
-
-      setSelectedTeam("");
 
       setMessage(
         "Je n'ai aucune tâche actuellement."
@@ -334,36 +331,11 @@ function Availability() {
               Équipe
             </label>
 
-            <select
-              id="team"
-              value={selectedTeam}
-              onChange={(event) =>
-                setSelectedTeam(
-                  event.target.value
-                )
-              }
-              required
-              className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none transition focus:border-[#B6FF00] focus:ring-1 focus:ring-[#B6FF00]/30"
-            >
-
-              <option value="">
-                Sélectionner une équipe
-              </option>
-
-              {teams.map(
-                (team) => (
-
-                  <option
-                    key={team.id}
-                    value={team.id}
-                  >
-                    {team.name}
-                  </option>
-
-                )
-              )}
-
-            </select>
+            <div className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2]">
+              {teams.find(
+                (team) => String(team.id) === selectedTeam
+              )?.name || "Aucune équipe"}
+            </div>
 
           </div>
 

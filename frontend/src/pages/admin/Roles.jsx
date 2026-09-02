@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  Pencil,
   Plus,
   ShieldCheck,
   Trash2,
@@ -19,6 +20,8 @@ function Roles() {
   const [error, setError] = useState("");
 
   const [showModal, setShowModal] = useState(false);
+
+  const [editingRole, setEditingRole] = useState(null);
 
   const [saving, setSaving] = useState(false);
 
@@ -63,7 +66,7 @@ function Roles() {
   }, []);
 
 
-  const handleCreate = async (event) => {
+  const handleSubmit = async (event) => {
 
     event.preventDefault();
 
@@ -72,26 +75,41 @@ function Roles() {
 
     try {
 
-      const response = await api.post(
-        "/teams/roles/",
-        {
-          label: form.label,
-          unique_per_team: form.unique_per_team,
-        }
-      );
+      const payload = {
+        label: form.label,
+        unique_per_team: form.unique_per_team,
+      };
 
-      setRoles((previous) =>
-        [...previous, response.data].sort(
-          (left, right) =>
-            left.label.localeCompare(right.label)
-        )
-      );
+      const response = editingRole
+        ? await api.patch(
+            `/teams/roles/${editingRole.id}/`,
+            payload
+          )
+        : await api.post(
+            "/teams/roles/",
+            payload
+          );
+
+      setRoles((previous) => {
+        const updated = editingRole
+          ? previous.map((role) =>
+              role.id === editingRole.id
+                ? response.data
+                : role
+            )
+          : [...previous, response.data];
+
+        return updated.sort((left, right) =>
+          left.label.localeCompare(right.label)
+        );
+      });
 
       setForm({
         label: "",
         unique_per_team: false,
       });
 
+      setEditingRole(null);
       setShowModal(false);
 
     } catch (err) {
@@ -107,7 +125,7 @@ function Roles() {
           .join(" ");
 
         setFormError(
-          messages || "Impossible de créer le rôle."
+          messages || "Impossible d'enregistrer le rôle."
         );
 
       } else {
@@ -122,6 +140,28 @@ function Roles() {
 
     }
 
+  };
+
+
+  const openCreateModal = () => {
+    setFormError("");
+    setEditingRole(null);
+    setForm({
+      label: "",
+      unique_per_team: false,
+    });
+    setShowModal(true);
+  };
+
+
+  const openEditModal = (role) => {
+    setFormError("");
+    setEditingRole(role);
+    setForm({
+      label: role.label,
+      unique_per_team: role.unique_per_team,
+    });
+    setShowModal(true);
   };
 
 
@@ -214,12 +254,7 @@ function Roles() {
 
         <button
           onClick={() => {
-            setFormError("");
-            setForm({
-              label: "",
-              unique_per_team: false,
-            });
-            setShowModal(true);
+            openCreateModal();
           }}
           className="flex items-center justify-center gap-2 rounded-xl bg-[#B6FF00] px-5 py-3 text-sm font-semibold text-black transition hover:bg-[#C4FF33]"
         >
@@ -344,7 +379,19 @@ function Roles() {
 
                     <td className="px-6 py-4 text-right">
 
-                      {!role.is_system && (
+                      <div className="flex items-center justify-end gap-1">
+
+                        <button
+                          onClick={() => openEditModal(role)}
+                          className="rounded-lg p-2 text-[#647276] transition hover:bg-[#152400] hover:text-[#B6FF00]"
+                          title="Modifier"
+                        >
+
+                          <Pencil size={17} />
+
+                        </button>
+
+                        {!role.is_system && (
 
                         <button
                           onClick={() => handleDelete(role)}
@@ -356,7 +403,9 @@ function Roles() {
 
                         </button>
 
-                      )}
+                        )}
+
+                      </div>
 
                     </td>
 
@@ -386,7 +435,7 @@ function Roles() {
               <div>
 
                 <h2 className="font-semibold text-[#F1F5F2]">
-                  Créer un rôle
+                  {editingRole ? "Modifier le rôle" : "Créer un rôle"}
                 </h2>
 
                 <p className="mt-1 text-sm text-[#647276]">
@@ -407,7 +456,7 @@ function Roles() {
             </div>
 
             <form
-              onSubmit={handleCreate}
+              onSubmit={handleSubmit}
               className="space-y-5 p-6"
             >
 
@@ -484,7 +533,11 @@ function Roles() {
                   className="rounded-xl bg-[#B6FF00] px-5 py-3 text-sm font-semibold text-black hover:bg-[#C4FF33] disabled:opacity-60"
                 >
 
-                  {saving ? "Création..." : "Créer le rôle"}
+                  {saving
+                    ? "Enregistrement..."
+                    : editingRole
+                      ? "Enregistrer les modifications"
+                      : "Créer le rôle"}
 
                 </button>
 

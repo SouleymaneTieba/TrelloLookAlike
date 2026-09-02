@@ -1,3 +1,4 @@
+from django.db import models
 from django.utils import timezone
 
 from rest_framework import permissions, viewsets
@@ -95,9 +96,12 @@ class TaskViewSet(viewsets.ModelViewSet):
         return (
             base_queryset
             .filter(
-                assigned_to=user,
                 project__team__members__user=user,
                 project__team__members__is_active=True,
+            )
+            .filter(
+                models.Q(assigned_to=user)
+                | models.Q(created_by=user)
             )
             .distinct()
             .order_by("-created_at")

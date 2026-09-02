@@ -16,6 +16,9 @@ function Users() {
   const [users, setUsers] =
     useState([]);
 
+  const [roles, setRoles] =
+    useState([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -82,9 +85,30 @@ function Users() {
   };
 
 
+  const fetchRoles = async () => {
+
+    try {
+
+      const response =
+        await api.get("/teams/roles/");
+
+      setRoles(response.data);
+
+    } catch (error) {
+
+      console.error(error);
+
+      setRoles([]);
+
+    }
+
+  };
+
+
   useEffect(() => {
 
     fetchUsers();
+    fetchRoles();
 
   }, []);
 
@@ -741,13 +765,31 @@ function Users() {
                   Poste
                 </label>
 
-                <input
-                  name="job_title"
-                  value={form.job_title}
-                  onChange={handleChange}
-                  placeholder="Ex : Développeur frontend"
-                  className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none placeholder:text-[#47565A] focus:border-[#B6FF00]"
-                />
+                {roles.length > 0 ? (
+                  <select
+                    name="job_title"
+                    value={form.job_title}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
+                  >
+                    <option value="">
+                      Sélectionner un poste
+                    </option>
+
+                    {roles.map((role) => (
+                      <option
+                        key={role.id}
+                        value={role.label}
+                      >
+                        {role.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#647276]">
+                    Aucun rôle existant. Créez-en d’abord dans la section rôles.
+                  </div>
+                )}
 
               </div>
 

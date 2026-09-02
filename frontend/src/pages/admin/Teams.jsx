@@ -51,7 +51,7 @@ function Teams() {
 
   const [memberForm, setMemberForm] = useState({
     user: "",
-    role: "MEMBER",
+    role: "",
     is_active: true,
   });
 
@@ -123,6 +123,11 @@ function Teams() {
         await api.get("/teams/roles/");
 
       setRoles(response.data);
+
+      setMemberForm((previous) => ({
+        ...previous,
+        role: previous.role || response.data[0]?.slug || "",
+      }));
 
     } catch (error) {
 
@@ -311,7 +316,7 @@ function Teams() {
 
       setMemberForm({
         user: "",
-        role: "MEMBER",
+        role: roles[0]?.slug || "",
         is_active: true,
       });
 
@@ -1237,31 +1242,41 @@ function Teams() {
                   Rôle
                 </label>
 
-                <select
-                  value={memberForm.role}
-                  onChange={(event) =>
-                    setMemberForm({
-                      ...memberForm,
-                      role: event.target.value,
-                    })
-                  }
-                  className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
-                >
+                {roles.length > 0 ? (
+                  <select
+                    value={memberForm.role}
+                    onChange={(event) =>
+                      setMemberForm({
+                        ...memberForm,
+                        role: event.target.value,
+                      })
+                    }
+                    required
+                    className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
+                  >
+                    <option value="">
+                      Sélectionner un rôle
+                    </option>
 
-                  {roles.map(
-                    (role) => (
+                    {roles.map(
+                      (role) => (
 
-                      <option
-                        key={role.slug}
-                        value={role.slug}
-                      >
-                        {role.label}
-                      </option>
+                        <option
+                          key={role.slug}
+                          value={role.slug}
+                        >
+                          {role.label}
+                        </option>
 
-                    )
-                  )}
+                      )
+                    )}
 
-                </select>
+                  </select>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#647276]">
+                    Aucun rôle disponible. Créez-en d’abord dans la section rôles.
+                  </div>
+                )}
 
               </div>
 

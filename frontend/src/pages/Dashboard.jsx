@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   ArrowUpRight,
@@ -13,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 
 function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [tasks, setTasks] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -72,25 +74,21 @@ function Dashboard() {
       label: "Mes tâches",
       value: totalTasks,
       icon: ListTodo,
-      change: "12%",
     },
     {
       label: "En cours",
       value: inProgressTasks,
       icon: Clock3,
-      change: "8%",
     },
     {
       label: "Terminées",
       value: completedTasks,
       icon: CheckCircle2,
-      change: "15%",
     },
     {
       label: "Membres",
       value: teamMembers,
       icon: Users,
-      change: "5%",
     },
   ];
 
@@ -200,7 +198,6 @@ function Dashboard() {
                 </p>
 
                 <span className="flex items-center gap-1 text-sm font-medium text-[#B6FF00]">
-                  <ArrowUpRight size={15} />
                   {stat.change}
                 </span>
 
@@ -233,14 +230,6 @@ function Dashboard() {
             </p>
 
           </div>
-
-          <button className="flex items-center gap-2 text-sm font-medium text-[#B6FF00] hover:text-[#C4FF33]">
-
-            Voir toutes
-
-            <ArrowUpRight size={17} />
-
-          </button>
 
         </div>
 
@@ -353,7 +342,11 @@ function Dashboard() {
         {tasks.length > 0 && (
           <div className="border-t border-[#1C292D] px-6 py-4 text-center">
 
-            <button className="text-sm font-medium text-[#B6FF00] hover:text-[#C4FF33]">
+            <button
+              type="button"
+              onClick={() => navigate("/tasks")}
+              className="text-sm font-medium text-[#B6FF00] hover:text-[#C4FF33]"
+            >
               Voir toutes les tâches →
             </button>
 

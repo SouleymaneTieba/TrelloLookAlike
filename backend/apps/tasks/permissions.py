@@ -30,27 +30,6 @@ class TaskPermission(permissions.BasePermission):
             return True
 
         # ==================================================
-        # CHEF DE PROJET
-        # ==================================================
-
-        is_project_manager = (
-            obj.project.team.members
-            .filter(
-                user=user,
-                role__slug="PROJECT_MANAGER",
-                is_active=True,
-            )
-            .exists()
-        )
-
-        if is_project_manager:
-
-            # Le chef de projet peut gérer
-            # les tâches de son équipe.
-
-            return True
-
-        # ==================================================
         # VÉRIFIER L'APPARTENANCE À L'ÉQUIPE
         # ==================================================
 
@@ -70,10 +49,10 @@ class TaskPermission(permissions.BasePermission):
         # MEMBRE NORMAL
         # ==================================================
 
-        # Un membre normal ne peut accéder
-        # qu'aux tâches qui lui sont assignées.
+        is_creator = obj.created_by_id == user.id
+        is_assignee = obj.assigned_to_id == user.id
 
-        if obj.assigned_to_id != user.id:
+        if not (is_creator or is_assignee):
             return False
 
         # ==================================================
@@ -84,33 +63,49 @@ class TaskPermission(permissions.BasePermission):
             return True
 
         # ==================================================
-        # MODIFICATION DU STATUT
+        # TACHE CRÉÉE PAR L'UTILISATEUR
         # ==================================================
 
-        if request.method in [
-            "PUT",
-            "PATCH",
-        ]:
+        if is_creator:
 
-            status_only = (
-                set(request.data.keys())
-                <= {"status"}
-            )
-
-            if status_only:
+            if request.method == "DELETE":
                 return True
 
-            # Un membre normal ne peut pas
-            # modifier le reste de la tâche.
+            if request.method in [
+                "PUT",
+                "PATCH",
+            ]:
 
-            return False
+                status_only = (
+                    set(request.data.keys())
+                    <= {"status"}
+                )
+
+                return True
 
         # ==================================================
-        # SUPPRESSION
+        # TACHE ASSIGNÉE À L'UTILISATEUR
         # ==================================================
 
-        if request.method == "DELETE":
-            return False
+        if is_assignee:
+
+            if request.method in [
+                "PUT",
+                "PATCH",
+            ]:
+
+                status_only = (
+                    set(request.data.keys())
+                    <= {"status"}
+                )
+
+                if status_only:
+                    return True
+
+                return False
+
+            if request.method == "DELETE":
+                return False
 
         return False
 

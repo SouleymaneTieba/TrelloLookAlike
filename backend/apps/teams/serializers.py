@@ -211,9 +211,14 @@ class TeamMemberSerializer(serializers.ModelSerializer):
 
         if "role" not in validated_data:
 
-            validated_data["role"] = Role.objects.get(
-                slug=Role.SLUG_MEMBER,
-            )
+            fallback_role = Role.objects.order_by("label").first()
+
+            if not fallback_role:
+                raise serializers.ValidationError({
+                    "role": "Aucun rôle existant n'est disponible. Créez d'abord un rôle."
+                })
+
+            validated_data["role"] = fallback_role
 
         return super().create(validated_data)
 

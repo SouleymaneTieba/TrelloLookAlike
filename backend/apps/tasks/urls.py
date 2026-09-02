@@ -41,6 +41,16 @@ urlpatterns = [
         name="task-availability",
     ),
 
+    path(
+        "tasks/availability/<int:pk>/",
+        TaskAvailabilityReportViewSet.as_view({
+            "get": "retrieve",
+            "patch": "partial_update",
+            "put": "update",
+        }),
+        name="task-availability-detail",
+    ),
+
     # ----------------------------------------------
     # Tâches
     # ----------------------------------------------

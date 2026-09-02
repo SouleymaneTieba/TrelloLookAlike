@@ -6,7 +6,6 @@ from django.utils.text import slugify
 class Role(models.Model):
 
     SLUG_PROJECT_MANAGER = "PROJECT_MANAGER"
-    SLUG_MEMBER = "MEMBER"
 
     slug = models.CharField(
         max_length=50,
