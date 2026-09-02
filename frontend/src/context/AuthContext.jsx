@@ -11,6 +11,53 @@ import api from "../services/api";
 const AuthContext = createContext(null);
 
 
+function setAuthorization(accessToken) {
+
+  api.defaults.headers.common.Authorization =
+    `Bearer ${accessToken}`;
+
+}
+
+
+function clearAuthorization() {
+
+  delete api.defaults.headers.common.Authorization;
+
+}
+
+
+async function refreshAccessToken() {
+
+  const refreshToken =
+    localStorage.getItem(
+      "refresh_token"
+    );
+
+  if (!refreshToken) {
+    throw new Error("Jeton de rafraichissement absent.");
+  }
+
+  const response = await api.post(
+    "/auth/refresh/",
+    {
+      refresh: refreshToken,
+    }
+  );
+
+  const { access } = response.data;
+
+  localStorage.setItem(
+    "access_token",
+    access
+  );
+
+  setAuthorization(access);
+
+  return access;
+
+}
+
+
 export function AuthProvider({ children }) {
 
   const [user, setUser] =
@@ -63,8 +110,7 @@ export function AuthProvider({ children }) {
     // CONFIGURATION AXIOS
     // ----------------------------------------
 
-    api.defaults.headers.common.Authorization =
-      `Bearer ${access}`;
+    setAuthorization(access);
 
 
     // ----------------------------------------
@@ -107,9 +153,7 @@ export function AuthProvider({ children }) {
     );
 
 
-    delete api.defaults.headers
-      .common
-      .Authorization;
+    clearAuthorization();
 
 
     setUser(null);
@@ -144,36 +188,54 @@ export function AuthProvider({ children }) {
     // Restaurer Authorization
     // ----------------------------------------
 
-    api.defaults.headers.common.Authorization =
-      `Bearer ${token}`;
+    setAuthorization(token);
 
 
     // ----------------------------------------
     // Vérifier le token
     // ----------------------------------------
 
-    api
-      .get("/users/me/")
+    const restoreSession = async () => {
 
-      .then((response) => {
+      try {
 
-        setUser(
-          response.data
+        const response = await api.get(
+          "/users/me/"
         );
 
-      })
+        setUser(response.data);
 
-      .catch(() => {
+      } catch (error) {
 
-        logout();
+        if (error.response?.status !== 401) {
+          return;
+        }
 
-      })
+        try {
 
-      .finally(() => {
+          await refreshAccessToken();
+
+          const response = await api.get(
+            "/users/me/"
+          );
+
+          setUser(response.data);
+
+        } catch {
+
+          logout();
+
+        }
+
+      } finally {
 
         setLoading(false);
 
-      });
+      }
+
+    };
+
+    restoreSession();
 
   }, []);
 

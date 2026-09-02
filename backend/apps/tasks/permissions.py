@@ -37,7 +37,7 @@ class TaskPermission(permissions.BasePermission):
             obj.project.team.members
             .filter(
                 user=user,
-                role="PROJECT_MANAGER",
+                role__slug="PROJECT_MANAGER",
                 is_active=True,
             )
             .exists()

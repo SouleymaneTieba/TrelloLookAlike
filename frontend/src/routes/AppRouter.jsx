@@ -7,6 +7,7 @@ import {
 
 import AdminUsers from "../pages/admin/Users";
 import AdminTeams from "../pages/admin/Teams";
+import AdminRoles from "../pages/admin/Roles";
 import AdminTasks from "../pages/admin/Tasks";
 import AdminAvailability from "../pages/admin/Availability";
 import AdminProjects from "../pages/admin/Projects";
@@ -181,6 +182,14 @@ function AppRouter() {
           <Route
             path="/admin/teams"
             element={<AdminTeams />}
+          />
+
+
+          {/* Rôles */}
+
+          <Route
+            path="/admin/roles"
+            element={<AdminRoles />}
           />
 
 

@@ -350,7 +350,7 @@ function Chat() {
 
   return (
 
-    <div className="-m-8 flex h-[calc(100vh-5rem)] min-h-[600px] overflow-hidden border border-[#1C292D] bg-[#070D0F]">
+    <div className="-m-8 flex h-[calc(100vh-5rem)] min-h-[600px] overflow-hidden border border-[#1C292D] bg-[#0E171A]">
 
 
       {/* ==================================================

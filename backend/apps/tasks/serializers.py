@@ -180,7 +180,7 @@ class TaskSerializer(serializers.ModelSerializer):
             project.team.members
             .filter(
                 user=user,
-                role="PROJECT_MANAGER",
+                role__slug="PROJECT_MANAGER",
                 is_active=True,
             )
             .exists()

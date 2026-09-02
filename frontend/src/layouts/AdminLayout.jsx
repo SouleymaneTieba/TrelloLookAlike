@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  ShieldCheck,
   UserRound,
   Users,
 } from "lucide-react";
@@ -60,6 +61,12 @@ function AdminLayout() {
     },
 
     {
+      name: "Rôles",
+      path: "/admin/roles",
+      icon: ShieldCheck,
+    },
+
+    {
       name: "Projets",
       path: "/admin/projects",
       icon: FolderKanban,
@@ -75,13 +82,7 @@ function AdminLayout() {
       name: "Disponibilités",
       path: "/admin/availability",
       icon: Clock3,
-    },
-
-    {
-      name: "Notifications",
-      path: "/admin/notifications",
-      icon: Bell,
-    },
+    }
 
   ];
 

@@ -7,7 +7,6 @@ import {
   MessageCircle,
   Settings,
   ShieldCheck,
-  User,
   Users,
   UserCog,
 } from "lucide-react";
@@ -530,27 +529,9 @@ function DashboardLayout() {
         <div className="border-t border-[#1C292D] px-3 py-4">
 
           <NavLink
-            to="/profile"
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
-                isActive
-                  ? "bg-[#152400] text-[#B6FF00]"
-                  : "text-[#94A3A6] hover:bg-[#10191C] hover:text-white"
-              }`
-            }
-          >
-
-            <User size={20} />
-
-            Profil
-
-          </NavLink>
-
-
-          <NavLink
             to="/settings"
             className={({ isActive }) =>
-              `mt-1 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
+              `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
                 isActive
                   ? "bg-[#152400] text-[#B6FF00]"
                   : "text-[#94A3A6] hover:bg-[#10191C] hover:text-white"

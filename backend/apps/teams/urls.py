@@ -3,6 +3,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    RoleViewSet,
     TeamMemberViewSet,
     TeamViewSet,
 )
@@ -11,15 +12,21 @@ from .views import (
 router = DefaultRouter()
 
 router.register(
-    "",
-    TeamViewSet,
-    basename="teams",
+    "roles",
+    RoleViewSet,
+    basename="roles",
 )
 
 router.register(
     "members",
     TeamMemberViewSet,
     basename="team-members",
+)
+
+router.register(
+    "",
+    TeamViewSet,
+    basename="teams",
 )
 
 

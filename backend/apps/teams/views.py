@@ -1,9 +1,11 @@
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 
 from apps.notifications.models import Notification
 from apps.notifications.services import NotificationService
 
-from .models import Team, TeamMember
+from .models import Role, Team, TeamMember
 
 from .permissions import (
     IsAdminUser,
@@ -11,6 +13,7 @@ from .permissions import (
 )
 
 from .serializers import (
+    RoleSerializer,
     TeamMemberSerializer,
     TeamSerializer,
 )
@@ -21,6 +24,12 @@ class TeamViewSet(viewsets.ModelViewSet):
     serializer_class = TeamSerializer
 
     def get_permissions(self):
+
+        if self.action == "create":
+
+            return [
+                IsAdminUser()
+            ]
 
         # ==========================================
         # ADMIN
@@ -60,6 +69,7 @@ class TeamViewSet(viewsets.ModelViewSet):
                 Team.objects
                 .prefetch_related(
                     "members__user",
+                    "members__role",
                 )
                 .all()
                 .order_by("-created_at")
@@ -73,6 +83,7 @@ class TeamViewSet(viewsets.ModelViewSet):
             Team.objects
             .prefetch_related(
                 "members__user",
+                "members__role",
             )
             .filter(
                 members__user=user,
@@ -125,6 +136,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                 .select_related(
                     "user",
                     "team",
+                    "role",
                 )
                 .all()
                 .order_by(
@@ -142,6 +154,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             .select_related(
                 "user",
                 "team",
+                "role",
             )
             .filter(
                 user=user,
@@ -199,9 +212,9 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         # CHANGEMENT DE RÔLE
         # ==========================================
 
-        if member.role != old_role:
+        if member.role_id != old_role.id:
 
-            new_role = member.get_role_display()
+            new_role = member.role.label
 
             NotificationService.create(
 
@@ -277,3 +290,41 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
 
                 link="/teams",
             )
+
+
+class RoleViewSet(viewsets.ModelViewSet):
+
+    serializer_class = RoleSerializer
+
+    queryset = Role.objects.all()
+
+    def get_permissions(self):
+
+        if self.action in [
+            "list",
+            "retrieve",
+        ]:
+
+            return [
+                IsAuthenticated()
+            ]
+
+        return [
+            IsAdminUser()
+        ]
+
+    def perform_destroy(self, instance):
+
+        if instance.is_system:
+
+            raise ValidationError(
+                "Ce rôle système ne peut pas être supprimé."
+            )
+
+        if instance.members.exists():
+
+            raise ValidationError(
+                "Ce rôle est encore attribué à des membres."
+            )
+
+        instance.delete()

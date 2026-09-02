@@ -1,6 +1,20 @@
 from django.contrib import admin
 
-from .models import Team, TeamMember
+from .models import Role, Team, TeamMember
+
+
+@admin.register(Role)
+class RoleAdmin(admin.ModelAdmin):
+    list_display = (
+        "label",
+        "slug",
+        "is_system",
+        "unique_per_team",
+        "created_at",
+    )
+    list_filter = ("is_system", "unique_per_team")
+    search_fields = ("label", "slug")
+    readonly_fields = ("slug", "is_system")
 
 
 @admin.register(Team)

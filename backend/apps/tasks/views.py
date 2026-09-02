@@ -69,7 +69,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         is_project_manager = (
             user.team_memberships
             .filter(
-                role="PROJECT_MANAGER",
+                role__slug="PROJECT_MANAGER",
                 is_active=True,
             )
             .exists()
@@ -81,7 +81,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 base_queryset
                 .filter(
                     project__team__members__user=user,
-                    project__team__members__role="PROJECT_MANAGER",
+                    project__team__members__role__slug="PROJECT_MANAGER",
                     project__team__members__is_active=True,
                 )
                 .distinct()

@@ -30,6 +30,6 @@ class AvailabilityReportPermission(
         # Chef de projet de l'équipe
         return obj.team.members.filter(
             user=user,
-            role="PROJECT_MANAGER",
+            role__slug="PROJECT_MANAGER",
             is_active=True,
         ).exists()

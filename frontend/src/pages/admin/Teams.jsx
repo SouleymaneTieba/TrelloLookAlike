@@ -6,34 +6,11 @@ import {
   X,
   Trash2,
   UserPlus,
+  UserRound,
   ShieldCheck,
 } from "lucide-react";
 
 import api from "../../services/api";
-
-
-const ROLES = [
-  {
-    value: "PROJECT_MANAGER",
-    label: "Chef de projet",
-  },
-  {
-    value: "DEVELOPER",
-    label: "Développeur",
-  },
-  {
-    value: "DESIGNER",
-    label: "Designer",
-  },
-  {
-    value: "TESTER",
-    label: "Testeur",
-  },
-  {
-    value: "MEMBER",
-    label: "Membre",
-  },
-];
 
 
 function Teams() {
@@ -41,6 +18,8 @@ function Teams() {
   const [teams, setTeams] = useState([]);
 
   const [users, setUsers] = useState([]);
+
+  const [roles, setRoles] = useState([]);
 
   const [selectedTeam, setSelectedTeam] =
     useState(null);
@@ -136,10 +115,33 @@ function Teams() {
   };
 
 
+  const fetchRoles = async () => {
+
+    try {
+
+      const response =
+        await api.get("/teams/roles/");
+
+      setRoles(response.data);
+
+    } catch (error) {
+
+      console.error(error);
+
+      setError(
+        "Impossible de récupérer les rôles."
+      );
+
+    }
+
+  };
+
+
   useEffect(() => {
 
     fetchTeams();
     fetchUsers();
+    fetchRoles();
 
   }, []);
 
@@ -928,12 +930,12 @@ function Teams() {
                               className="rounded-lg border border-[#1C292D] bg-[#0B1215] px-3 py-2 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
                             >
 
-                              {ROLES.map(
+                              {roles.map(
                                 (role) => (
 
                                   <option
-                                    key={role.value}
-                                    value={role.value}
+                                    key={role.slug}
+                                    value={role.slug}
                                   >
                                     {role.label}
                                   </option>
@@ -1246,12 +1248,12 @@ function Teams() {
                   className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
                 >
 
-                  {ROLES.map(
+                  {roles.map(
                     (role) => (
 
                       <option
-                        key={role.value}
-                        value={role.value}
+                        key={role.slug}
+                        value={role.slug}
                       >
                         {role.label}
                       </option>

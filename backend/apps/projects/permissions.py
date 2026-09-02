@@ -5,10 +5,21 @@ class ProjectPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
 
-        return bool(
+        is_authenticated = bool(
             request.user
             and request.user.is_authenticated
         )
+
+        if not is_authenticated:
+            return False
+
+        if request.method == "POST":
+            return bool(
+                request.user.is_staff
+                or request.user.is_superuser
+            )
+
+        return True
 
     def has_object_permission(
         self,

@@ -1025,7 +1025,7 @@ function Tasks() {
 
                         {" — "}
 
-                        {member.role}
+                        {member.role_label || member.role}
 
                       </option>
 

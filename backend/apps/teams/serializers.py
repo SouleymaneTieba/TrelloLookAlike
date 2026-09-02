@@ -1,6 +1,70 @@
 from rest_framework import serializers
 
-from .models import Team, TeamMember
+from .models import Role, Team, TeamMember
+
+
+class RoleSerializer(serializers.ModelSerializer):
+
+    class Meta:
+
+        model = Role
+
+        fields = [
+            "id",
+            "slug",
+            "label",
+            "is_system",
+            "unique_per_team",
+            "created_at",
+        ]
+
+        read_only_fields = [
+            "slug",
+            "is_system",
+            "created_at",
+        ]
+
+    def validate_label(self, value):
+
+        label = value.strip()
+
+        if not label:
+            raise serializers.ValidationError(
+                "Le nom du rôle est obligatoire."
+            )
+
+        queryset = Role.objects.filter(
+            label__iexact=label,
+        )
+
+        if self.instance:
+            queryset = queryset.exclude(
+                id=self.instance.id,
+            )
+
+        if queryset.exists():
+            raise serializers.ValidationError(
+                "Un rôle avec ce nom existe déjà."
+            )
+
+        return label
+
+    def create(self, validated_data):
+
+        validated_data["slug"] = Role.make_slug(
+            validated_data["label"]
+        )
+
+        validated_data["is_system"] = False
+
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+
+        if instance.is_system:
+            validated_data.pop("unique_per_team", None)
+
+        return super().update(instance, validated_data)
 
 
 class TeamMemberSerializer(serializers.ModelSerializer):
@@ -35,6 +99,16 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    role = serializers.SlugRelatedField(
+        slug_field="slug",
+        queryset=Role.objects.all(),
+    )
+
+    role_label = serializers.CharField(
+        source="role.label",
+        read_only=True,
+    )
+
     class Meta:
 
         model = TeamMember
@@ -50,6 +124,7 @@ class TeamMemberSerializer(serializers.ModelSerializer):
             "team",
             "team_name",
             "role",
+            "role_label",
             "joined_at",
             "is_active",
         ]
@@ -61,8 +136,86 @@ class TeamMemberSerializer(serializers.ModelSerializer):
             "email",
             "job_title",
             "team_name",
+            "role_label",
             "joined_at",
         ]
+
+    def validate(self, attrs):
+
+        user = attrs.get(
+            "user",
+            getattr(self.instance, "user", None),
+        )
+
+        team = attrs.get(
+            "team",
+            getattr(self.instance, "team", None),
+        )
+
+        role = attrs.get(
+            "role",
+            getattr(self.instance, "role", None),
+        )
+
+        is_active = attrs.get(
+            "is_active",
+            getattr(self.instance, "is_active", True),
+        )
+
+        if user and team:
+
+            queryset = TeamMember.objects.filter(
+                user=user,
+                team=team,
+            )
+
+            if self.instance:
+                queryset = queryset.exclude(
+                    id=self.instance.id,
+                )
+
+            if queryset.exists():
+                raise serializers.ValidationError(
+                    "Cet utilisateur appartient déjà à cette équipe."
+                )
+
+        if (
+            role
+            and role.unique_per_team
+            and is_active
+            and team
+        ):
+
+            existing = (
+                TeamMember.objects
+                .filter(
+                    team=team,
+                    role=role,
+                    is_active=True,
+                )
+            )
+
+            if self.instance:
+                existing = existing.exclude(
+                    id=self.instance.id,
+                )
+
+            if existing.exists():
+                raise serializers.ValidationError(
+                    f"Cette équipe possède déjà un {role.label.lower()}."
+                )
+
+        return attrs
+
+    def create(self, validated_data):
+
+        if "role" not in validated_data:
+
+            validated_data["role"] = Role.objects.get(
+                slug=Role.SLUG_MEMBER,
+            )
+
+        return super().create(validated_data)
 
 
 class TeamSerializer(serializers.ModelSerializer):
@@ -90,96 +243,3 @@ class TeamSerializer(serializers.ModelSerializer):
             "created_by",
             "members",
         ]
-
-
-class TeamMemberCreateSerializer(
-    serializers.ModelSerializer
-):
-
-    class Meta:
-
-        model = TeamMember
-
-        fields = [
-            "user",
-            "team",
-            "role",
-            "is_active",
-        ]
-
-    def validate(self, attrs):
-
-        user = attrs["user"]
-        team = attrs["team"]
-        role = attrs["role"]
-
-        if TeamMember.objects.filter(
-            user=user,
-            team=team,
-        ).exists():
-
-            raise serializers.ValidationError(
-                "Cet utilisateur appartient déjà à cette équipe."
-            )
-
-        if role == TeamMember.Role.PROJECT_MANAGER:
-
-            if TeamMember.objects.filter(
-                team=team,
-                role=TeamMember.Role.PROJECT_MANAGER,
-                is_active=True,
-            ).exists():
-
-                raise serializers.ValidationError(
-                    "Cette équipe possède déjà un chef de projet."
-                )
-
-        return attrs
-
-
-class TeamMemberUpdateSerializer(
-    serializers.ModelSerializer
-):
-
-    class Meta:
-
-        model = TeamMember
-
-        fields = [
-            "role",
-            "is_active",
-        ]
-
-    def validate(self, attrs):
-
-        role = attrs.get("role")
-        is_active = attrs.get(
-            "is_active",
-            self.instance.is_active,
-        )
-
-        if (
-            role == TeamMember.Role.PROJECT_MANAGER
-            and is_active
-        ):
-
-            existing_manager = (
-                TeamMember.objects
-                .filter(
-                    team=self.instance.team,
-                    role=TeamMember.Role.PROJECT_MANAGER,
-                    is_active=True,
-                )
-                .exclude(
-                    id=self.instance.id
-                )
-                .exists()
-            )
-
-            if existing_manager:
-
-                raise serializers.ValidationError(
-                    "Cette équipe possède déjà un chef de projet."
-                )
-
-        return attrs
