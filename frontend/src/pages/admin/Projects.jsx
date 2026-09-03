@@ -538,7 +538,21 @@ function Projects() {
 
         <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
 
-          {projects.map((project) => (
+          {projects.map((project) => {
+
+            const taskCount =
+              project.task_count ?? 0;
+
+            const completedTaskCount =
+              project.completed_task_count ?? 0;
+
+            const progress = taskCount > 0
+              ? Math.round(
+                  (completedTaskCount / taskCount) * 100
+                )
+              : 0;
+
+            return (
 
             <div
               key={project.id}
@@ -646,6 +660,47 @@ function Projects() {
               </div>
 
 
+              {/* PROGRESSION */}
+
+              <div className="mt-5 border-t border-[#1C292D] pt-4">
+
+                <div className="flex items-center justify-between text-xs">
+
+                  <span className="text-[#647276]">
+                    Progression
+                  </span>
+
+                  <span className="font-semibold text-[#B6FF00]">
+                    {progress}%
+                  </span>
+
+                </div>
+
+                <div
+                  className="mt-2 h-2 overflow-hidden rounded-full bg-[#1C292D]"
+                  role="progressbar"
+                  aria-label={`Progression du projet ${project.name}`}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow={progress}
+                >
+
+                  <div
+                    className="h-full rounded-full bg-[#B6FF00] transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+
+                </div>
+
+                <p className="mt-2 text-xs text-[#647276]">
+                  {completedTaskCount} sur {taskCount} tâche
+                  {taskCount > 1 ? "s" : ""} terminée
+                  {completedTaskCount > 1 ? "s" : ""}
+                </p>
+
+              </div>
+
+
               {/* FOOTER */}
 
               <div className="mt-6 flex items-center justify-between border-t border-[#1C292D] pt-4">
@@ -701,7 +756,9 @@ function Projects() {
 
             </div>
 
-          ))}
+            );
+
+          })}
 
         </div>
 

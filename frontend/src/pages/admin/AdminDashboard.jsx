@@ -3,9 +3,14 @@ import {
   useState,
 } from "react";
 
+import { useNavigate } from "react-router-dom";
+
 import {
   CheckSquare,
+  Clock3,
   FolderKanban,
+  ListTodo,
+  ShieldCheck,
   UserRound,
   Users,
 } from "lucide-react";
@@ -14,6 +19,8 @@ import api from "../../services/api";
 
 
 function AdminDashboard() {
+
+  const navigate = useNavigate();
 
   const [stats, setStats] = useState({
 
@@ -208,7 +215,11 @@ function AdminDashboard() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-          <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-5">
+          <button
+            type="button"
+            onClick={() => navigate("/admin/users")}
+            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
+          >
 
             <UserRound
               size={20}
@@ -223,10 +234,14 @@ function AdminDashboard() {
               Gérer les comptes et les rôles.
             </p>
 
-          </div>
+          </button>
 
 
-          <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-5">
+          <button
+            type="button"
+            onClick={() => navigate("/admin/teams")}
+            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
+          >
 
             <Users
               size={20}
@@ -241,10 +256,14 @@ function AdminDashboard() {
               Créer les équipes et leurs membres.
             </p>
 
-          </div>
+          </button>
 
 
-          <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-5">
+          <button
+            type="button"
+            onClick={() => navigate("/admin/projects")}
+            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
+          >
 
             <FolderKanban
               size={20}
@@ -259,7 +278,73 @@ function AdminDashboard() {
               Superviser les projets de l'organisation.
             </p>
 
-          </div>
+          </button>
+
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/roles")}
+            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
+          >
+
+            <ShieldCheck
+              size={20}
+              className="text-[#B6FF00]"
+            />
+
+            <h3 className="mt-4 font-medium text-[#F1F5F2]">
+              Rôles
+            </h3>
+
+            <p className="mt-1 text-sm text-[#647276]">
+              Gérer les rôles disponibles dans l'organisation.
+            </p>
+
+          </button>
+
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/tasks")}
+            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
+          >
+
+            <ListTodo
+              size={20}
+              className="text-[#B6FF00]"
+            />
+
+            <h3 className="mt-4 font-medium text-[#F1F5F2]">
+              Tâches
+            </h3>
+
+            <p className="mt-1 text-sm text-[#647276]">
+              Superviser et gérer les tâches de l'organisation.
+            </p>
+
+          </button>
+
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/availability")}
+            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
+          >
+
+            <Clock3
+              size={20}
+              className="text-[#B6FF00]"
+            />
+
+            <h3 className="mt-4 font-medium text-[#F1F5F2]">
+              Disponibilités
+            </h3>
+
+            <p className="mt-1 text-sm text-[#647276]">
+              Consulter les signalements de disponibilité.
+            </p>
+
+          </button>
 
         </div>
 

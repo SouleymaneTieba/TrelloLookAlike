@@ -22,6 +22,8 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     task_count = serializers.SerializerMethodField()
 
+    completed_task_count = serializers.SerializerMethodField()
+
     class Meta:
 
         model = Project
@@ -45,6 +47,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "end_date",
 
             "task_count",
+            "completed_task_count",
 
             "created_at",
             "updated_at",
@@ -61,3 +64,9 @@ class ProjectSerializer(serializers.ModelSerializer):
     def get_task_count(self, obj):
 
         return obj.tasks.count()
+
+    def get_completed_task_count(self, obj):
+
+        return obj.tasks.filter(
+            status="DONE"
+        ).count()
