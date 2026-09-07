@@ -24,6 +24,7 @@ import {
 } from "react";
 
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 
 import NotificationDropdown from "../components/notifications/NotificationDropdown";
 
@@ -113,40 +114,10 @@ function AdminLayout() {
 
   const fetchUnreadCount = useCallback(
     async () => {
-
-      const token =
-        localStorage.getItem(
-          "access_token"
-        );
-
-      if (!token) {
-        return;
-      }
-
-
       try {
-
-        const response =
-          await fetch(
-            "http://127.0.0.1:8000/api/notifications/unread-count/",
-            {
-              method: "GET",
-
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-              },
-            }
-          );
-
-
-        if (!response.ok) {
-          return;
-        }
-
-
-        const data =
-          await response.json();
+        const { data } = await api.get(
+          "/notifications/unread-count/"
+        );
 
 
         setUnreadCount(

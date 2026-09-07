@@ -166,6 +166,15 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
 
+    const handleSessionExpired = () => {
+      logout();
+    };
+
+    window.addEventListener(
+      "auth:session-expired",
+      handleSessionExpired
+    );
+
     const token =
       localStorage.getItem(
         "access_token"
@@ -180,7 +189,12 @@ export function AuthProvider({ children }) {
 
       setLoading(false);
 
-      return;
+      return () => {
+        window.removeEventListener(
+          "auth:session-expired",
+          handleSessionExpired
+        );
+      };
     }
 
 
@@ -236,6 +250,13 @@ export function AuthProvider({ children }) {
     };
 
     restoreSession();
+
+    return () => {
+      window.removeEventListener(
+        "auth:session-expired",
+        handleSessionExpired
+      );
+    };
 
   }, []);
 
