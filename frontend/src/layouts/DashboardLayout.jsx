@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   LogOut,
   MessageCircle,
-  Settings,
   ShieldCheck,
   Users,
   UserCog,
@@ -27,6 +26,7 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
 import NotificationDropdown from "../components/notifications/NotificationDropdown";
+import SettingsMenu from "../components/SettingsMenu";
 
 
 function DashboardLayout() {
@@ -35,7 +35,6 @@ function DashboardLayout() {
     user,
     logout,
   } = useAuth();
-
 
   // ==================================================
   // ADMIN
@@ -263,21 +262,9 @@ function DashboardLayout() {
     },
 
     {
-      name: "Équipes",
+      name: "Équipes et Projets",
       path: "/admin/teams",
       icon: Users,
-    },
-
-    {
-      name: "Projets",
-      path: "/admin/projects",
-      icon: FolderKanban,
-    },
-
-    {
-      name: "Tâches",
-      path: "/admin/tasks",
-      icon: CheckSquare,
     },
 
   ];
@@ -296,19 +283,7 @@ function DashboardLayout() {
     },
 
     {
-      name: "Mes tâches",
-      path: "/tasks",
-      icon: CheckSquare,
-    },
-
-    {
-      name: "Projets",
-      path: "/projects",
-      icon: FolderKanban,
-    },
-
-    {
-      name: "Équipe",
+      name: "Équipes et Projets",
       path: "/teams",
       icon: Users,
     },
@@ -443,7 +418,6 @@ function DashboardLayout() {
 
           {navigation.map(
             (item) => {
-
               const Icon =
                 item.icon;
 
@@ -505,22 +479,7 @@ function DashboardLayout() {
 
         <div className="border-t border-[#1C292D] px-3 py-4">
 
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
-                isActive
-                  ? "bg-[#152400] text-[#B6FF00]"
-                  : "text-[#94A3A6] hover:bg-[#10191C] hover:text-white"
-              }`
-            }
-          >
-
-            <Settings size={20} />
-
-            Paramètres
-
-          </NavLink>
+          <SettingsMenu />
 
 
           <button

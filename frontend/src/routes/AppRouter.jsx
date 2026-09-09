@@ -20,6 +20,7 @@ import Teams from "../pages/Teams";
 import Dashboard from "../pages/Dashboard";
 import Tasks from "../pages/Tasks";
 import Availability from "../pages/Availability";
+import Profile from "../pages/Profile";
 
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
@@ -128,11 +129,7 @@ function AppRouter() {
 
           <Route
             path="/profile"
-            element={
-              <Placeholder
-                title="Profil"
-              />
-            }
+            element={<Profile />}
           />
 
           <Route

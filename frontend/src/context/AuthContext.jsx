@@ -160,6 +160,18 @@ export function AuthProvider({ children }) {
   };
 
 
+  const updateUser = async (changes) => {
+    const response = await api.patch(
+      "/users/me/",
+      changes
+    );
+
+    setUser(response.data);
+
+    return response.data;
+  };
+
+
   // ==========================================
   // RESTAURER LA SESSION
   // ==========================================
@@ -272,6 +284,7 @@ export function AuthProvider({ children }) {
         user,
         loading,
         login,
+        updateUser,
         logout,
       }}
     >

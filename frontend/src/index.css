@@ -33,3 +33,47 @@ textarea,
 select {
   font: inherit;
 }
+
+html[data-theme="light"] body {
+  background: #f4f7f5;
+  color: #14201d;
+}
+
+html[data-theme="light"] [class~="bg-[#0E171A]"] {
+  background-color: #f4f7f5;
+}
+
+html[data-theme="light"] [class~="bg-[#070D0F]"] {
+  background-color: #ffffff;
+}
+
+html[data-theme="light"] [class~="bg-[#10191C]"] {
+  background-color: #ffffff;
+}
+
+html[data-theme="light"] [class~="bg-[#0B1315]"] {
+  background-color: #f7faf8;
+}
+
+html[data-theme="light"] [class~="border-[#1C292D]"],
+html[data-theme="light"] [class~="border-[#26363A"]] {
+  border-color: #d6e0da;
+}
+
+html[data-theme="light"] [class~="text-[#F1F5F2]"],
+html[data-theme="light"] [class~="text-[#DDE7E1]"] {
+  color: #14201d;
+}
+
+html[data-theme="light"] [class~="text-[#94A3A6]"] {
+  color: #53645d;
+}
+
+html[data-theme="light"] [class~="text-[#647276"]] {
+  color: #71817a;
+}
+
+html[data-theme="light"] [class~="hover\:bg-[#10191C]"]:hover,
+html[data-theme="light"] [class~="hover\:bg-[#1B292D]"]:hover {
+  background-color: #edf3ef;
+}

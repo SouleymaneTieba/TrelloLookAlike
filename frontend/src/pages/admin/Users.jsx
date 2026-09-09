@@ -56,11 +56,13 @@ function Users() {
   // CHARGER LES UTILISATEURS
   // ==========================================
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (showLoading = true) => {
 
     try {
 
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError("");
 
       const response =
@@ -109,6 +111,14 @@ function Users() {
 
     fetchUsers();
     fetchRoles();
+
+    const refreshInterval = setInterval(() => {
+      fetchUsers(false);
+    }, 5000);
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
 
   }, []);
 
@@ -553,11 +563,23 @@ function Users() {
 
                     <td className="px-6 py-4">
 
-                      <span className="inline-flex items-center gap-2 rounded-full border border-[#304800] bg-[#152400] px-3 py-1 text-xs font-medium text-[#B6FF00]">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
+                          user.is_online
+                            ? "border-[#304800] bg-[#152400] text-[#B6FF00]"
+                            : "border-[#26363A] bg-[#10191C] text-[#647276]"
+                        }`}
+                      >
 
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#B6FF00]" />
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            user.is_online
+                              ? "bg-[#B6FF00]"
+                              : "bg-[#647276]"
+                          }`}
+                        />
 
-                        Actif
+                        {user.is_online ? "En ligne" : "Déconnecté"}
 
                       </span>
 

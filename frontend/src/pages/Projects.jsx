@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   FolderKanban,
+  X,
   Users,
 } from "lucide-react";
 
@@ -21,6 +22,9 @@ function Projects() {
 
   const [error, setError] =
     useState("");
+
+  const [selectedProject, setSelectedProject] =
+    useState(null);
 
 
   // ==========================================
@@ -65,6 +69,29 @@ function Projects() {
     fetchProjects();
 
   }, []);
+
+
+  useEffect(() => {
+
+    if (!selectedProject) {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+
+      if (event.key === "Escape") {
+        setSelectedProject(null);
+      }
+
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+
+  }, [selectedProject]);
 
 
   // ==========================================
@@ -370,9 +397,11 @@ function Projects() {
 
                 return (
 
-                  <div
+                  <button
+                    type="button"
                     key={project.id}
-                    className="group rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:-translate-y-0.5 hover:border-[#304800]"
+                    className="group w-full cursor-pointer rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 text-left transition hover:-translate-y-0.5 hover:border-[#304800] focus:outline-none focus:ring-2 focus:ring-[#B6FF00]"
+                    onClick={() => setSelectedProject(project)}
                   >
 
 
@@ -545,7 +574,7 @@ function Projects() {
 
                     </div>
 
-                  </div>
+                  </button>
 
                 );
 
@@ -557,6 +586,136 @@ function Projects() {
         )}
 
       </div>
+
+      {selectedProject && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="presentation"
+          onClick={() => setSelectedProject(null)}
+        >
+          <section
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#26363A] bg-[#10191C] p-6 shadow-2xl sm:p-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="project-details-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#152400]">
+                  <FolderKanban size={20} className="text-[#B6FF00]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#B6FF00]">
+                    Détails du projet
+                  </p>
+                  <h2 id="project-details-title" className="mt-1 text-2xl font-semibold text-[#F1F5F2]">
+                    {selectedProject.name}
+                  </h2>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Fermer les détails du projet"
+                className="rounded-lg p-2 text-[#94A3A6] transition hover:bg-[#1C292D] hover:text-[#F1F5F2]"
+                onClick={() => setSelectedProject(null)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${getStatusStyle(
+                  selectedProject.status
+                )}`}
+              >
+                {(() => {
+                  const StatusIcon = getStatusIcon(selectedProject.status);
+                  return <StatusIcon size={13} />;
+                })()}
+                {selectedProject.status_label || selectedProject.status}
+              </span>
+              <span className="flex items-center gap-2 text-sm text-[#94A3A6]">
+                <Users size={16} className="text-[#647276]" />
+                {selectedProject.team_name}
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-5">
+              <div>
+                <h3 className="text-sm font-semibold text-[#F1F5F2]">Description</h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#94A3A6]">
+                  {selectedProject.description || "Aucune description."}
+                </p>
+              </div>
+
+              <div className="grid gap-4 border-y border-[#1C292D] py-5 sm:grid-cols-2">
+                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 text-[#647276]" />
+                  <span>
+                    <strong className="block text-xs font-medium text-[#647276]">Début</strong>
+                    {selectedProject.start_date
+                      ? new Date(selectedProject.start_date).toLocaleDateString("fr-FR")
+                      : "Non défini"}
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 text-[#647276]" />
+                  <span>
+                    <strong className="block text-xs font-medium text-[#647276]">Fin</strong>
+                    {selectedProject.end_date
+                      ? new Date(selectedProject.end_date).toLocaleDateString("fr-FR")
+                      : "Non définie"}
+                  </span>
+                </div>
+                <div className="text-sm text-[#94A3A6]">
+                  <strong className="block text-xs font-medium text-[#647276]">Créé par</strong>
+                  {selectedProject.created_by_username || "Non renseigné"}
+                </div>
+                <div className="text-sm text-[#94A3A6]">
+                  <strong className="block text-xs font-medium text-[#647276]">Tâches terminées</strong>
+                  {selectedProject.completed_task_count ?? 0} sur {selectedProject.task_count ?? 0}
+                </div>
+                <div className="text-sm text-[#94A3A6]">
+                  <strong className="block text-xs font-medium text-[#647276]">Créé le</strong>
+                  {selectedProject.created_at
+                    ? new Date(selectedProject.created_at).toLocaleDateString("fr-FR")
+                    : "Non renseigné"}
+                </div>
+                <div className="text-sm text-[#94A3A6]">
+                  <strong className="block text-xs font-medium text-[#647276]">Dernière modification</strong>
+                  {selectedProject.updated_at
+                    ? new Date(selectedProject.updated_at).toLocaleDateString("fr-FR")
+                    : "Non renseignée"}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[#94A3A6]">Progression</span>
+                  <span className="font-semibold text-[#B6FF00]">
+                    {(selectedProject.task_count ?? 0) > 0
+                      ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
+                      : 0}%
+                  </span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#1C292D]">
+                  <div
+                    className="h-full rounded-full bg-[#B6FF00]"
+                    style={{
+                      width: `${(selectedProject.task_count ?? 0) > 0
+                        ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
+                        : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
 
     </div>
 

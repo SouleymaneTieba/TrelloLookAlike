@@ -5,7 +5,6 @@ import {
   FolderKanban,
   LayoutDashboard,
   LogOut,
-  Settings,
   ShieldCheck,
   UserRound,
   Users,
@@ -27,6 +26,7 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
 import NotificationDropdown from "../components/notifications/NotificationDropdown";
+import SettingsMenu from "../components/SettingsMenu";
 
 
 function AdminLayout() {
@@ -35,7 +35,6 @@ function AdminLayout() {
     user,
     logout,
   } = useAuth();
-
 
   // ==================================================
   // NAVIGATION
@@ -56,27 +55,9 @@ function AdminLayout() {
     },
 
     {
-      name: "Équipes",
+      name: "Équipes et Projets",
       path: "/admin/teams",
       icon: Users,
-    },
-
-    {
-      name: "Rôles",
-      path: "/admin/roles",
-      icon: ShieldCheck,
-    },
-
-    {
-      name: "Projets",
-      path: "/admin/projects",
-      icon: FolderKanban,
-    },
-
-    {
-      name: "Tâches",
-      path: "/admin/tasks",
-      icon: CheckSquare,
     },
 
     {
@@ -380,7 +361,6 @@ function AdminLayout() {
 
           {navigation.map(
             (item) => {
-
               const Icon =
                 item.icon;
 
@@ -450,22 +430,7 @@ function AdminLayout() {
 
           {/* SETTINGS */}
 
-          <NavLink
-            to="/admin/settings"
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
-                isActive
-                  ? "bg-[#152400] text-[#B6FF00]"
-                  : "text-[#94A3A6] hover:bg-[#10191C] hover:text-white"
-              }`
-            }
-          >
-
-            <Settings size={20} />
-
-            Paramètres
-
-          </NavLink>
+          <SettingsMenu />
 
 
           {/* LOGOUT */}

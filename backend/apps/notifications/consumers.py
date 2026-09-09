@@ -1,5 +1,10 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+from apps.users.presence import (
+    mark_user_offline,
+    mark_user_online,
+)
+
 
 class NotificationConsumer(
     AsyncJsonWebsocketConsumer
@@ -23,6 +28,9 @@ class NotificationConsumer(
             )
 
             return
+
+        mark_user_online(self.user.id)
+        self.presence_registered = True
 
         # ==========================================
         # GROUPE PERSONNEL
@@ -53,6 +61,9 @@ class NotificationConsumer(
                 self.notification_group_name,
                 self.channel_name,
             )
+
+        if getattr(self, "presence_registered", False):
+            mark_user_offline(self.user.id)
 
     # ==========================================
     # NOTIFICATION REÇUE

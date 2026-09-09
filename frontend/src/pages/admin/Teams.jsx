@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 
 import {
+  CheckSquare,
+  FolderKanban,
   Plus,
+  ShieldCheck,
   Users,
   X,
   Trash2,
   UserPlus,
   UserRound,
-  ShieldCheck,
 } from "lucide-react";
+
+import { NavLink } from "react-router-dom";
 
 import api from "../../services/api";
 
@@ -985,6 +989,33 @@ function Teams() {
         </div>
 
       </div>
+
+      <nav className="mt-6 flex flex-wrap gap-2" aria-label="Navigation équipes et projets">
+        {[
+          { name: "Équipes", path: "/admin/teams", icon: Users },
+          { name: "Rôles", path: "/admin/roles", icon: ShieldCheck },
+          { name: "Projets", path: "/admin/projects", icon: FolderKanban },
+          { name: "Tâches", path: "/admin/tasks", icon: CheckSquare },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
+                  isActive
+                    ? "border-[#304800] bg-[#152400] text-[#B6FF00]"
+                    : "border-[#1C292D] bg-[#0B1215] text-[#94A3A6] hover:border-[#304800] hover:text-white"
+                }`
+              }
+            >
+              <Icon size={17} />
+              {item.name}
+            </NavLink>
+          );
+        })}
+      </nav>
 
 
       {/* ======================================

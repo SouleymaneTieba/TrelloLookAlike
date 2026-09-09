@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 
 import {
   CalendarDays,
+  CheckCircle2,
+  Clock3,
   Edit3,
   FolderKanban,
   Plus,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 
@@ -56,6 +59,9 @@ function Projects() {
   const [showModal, setShowModal] = useState(false);
 
   const [editingProject, setEditingProject] =
+    useState(null);
+
+  const [selectedProject, setSelectedProject] =
     useState(null);
 
   const [form, setForm] =
@@ -111,6 +117,29 @@ function Projects() {
     fetchData();
 
   }, []);
+
+
+  useEffect(() => {
+
+    if (!selectedProject) {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+
+      if (event.key === "Escape") {
+        setSelectedProject(null);
+      }
+
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+
+  }, [selectedProject]);
 
 
   // ==========================================
@@ -556,7 +585,16 @@ function Projects() {
 
             <div
               key={project.id}
-              className="flex flex-col rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:border-[#304800]"
+              className="flex cursor-pointer flex-col rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:border-[#304800] focus:outline-none focus:ring-2 focus:ring-[#B6FF00]"
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedProject(project)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedProject(project);
+                }
+              }}
             >
 
 
@@ -722,11 +760,11 @@ function Projects() {
                 <div className="flex items-center gap-1">
 
                   <button
+                    type="button"
                     onClick={() =>
-                      handleOpenEdit(
-                        project
-                      )
+                      handleOpenEdit(project)
                     }
+                    onClickCapture={(event) => event.stopPropagation()}
                     className="rounded-lg p-2 text-[#647276] transition hover:bg-[#10191C] hover:text-[#B6FF00]"
                     title="Modifier"
                   >
@@ -737,11 +775,11 @@ function Projects() {
 
 
                   <button
+                    type="button"
                     onClick={() =>
-                      handleDelete(
-                        project
-                      )
+                      handleDelete(project)
                     }
+                    onClickCapture={(event) => event.stopPropagation()}
                     className="rounded-lg p-2 text-[#647276] transition hover:bg-red-950/30 hover:text-red-400"
                     title="Supprimer"
                   >
@@ -768,6 +806,164 @@ function Projects() {
       {/* ======================================
           MODAL
       ======================================= */}
+
+      {selectedProject && (
+
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm"
+          role="presentation"
+          onClick={() => setSelectedProject(null)}
+        >
+
+          <section
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#1C292D] bg-[#0B1215] p-6 shadow-2xl sm:p-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-project-details-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+
+            <div className="flex items-start justify-between gap-4">
+
+              <div className="flex items-start gap-3">
+
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#152400]">
+                  <FolderKanban size={20} className="text-[#B6FF00]" />
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#B6FF00]">
+                    Détails du projet
+                  </p>
+                  <h2
+                    id="admin-project-details-title"
+                    className="mt-1 text-2xl font-semibold text-[#F1F5F2]"
+                  >
+                    {selectedProject.name}
+                  </h2>
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                aria-label="Fermer les détails du projet"
+                className="rounded-lg p-2 text-[#647276] hover:bg-[#10191C] hover:text-white"
+                onClick={() => setSelectedProject(null)}
+              >
+                <X size={20} />
+              </button>
+
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+
+              <span
+                className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusClass(
+                  selectedProject.status
+                )}`}
+              >
+                {selectedProject.status_label || getStatusLabel(selectedProject.status)}
+              </span>
+
+              <span className="flex items-center gap-2 text-sm text-[#94A3A6]">
+                <Users size={16} className="text-[#647276]" />
+                {selectedProject.team_name || "Équipe inconnue"}
+              </span>
+
+            </div>
+
+            <div className="mt-6 space-y-5">
+
+              <div>
+                <h3 className="text-sm font-semibold text-[#F1F5F2]">Description</h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#94A3A6]">
+                  {selectedProject.description || "Aucune description pour ce projet."}
+                </p>
+              </div>
+
+              <div className="grid gap-4 border-y border-[#1C292D] py-5 sm:grid-cols-2">
+
+                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 text-[#647276]" />
+                  <span>
+                    <strong className="block text-xs font-medium text-[#647276]">Début</strong>
+                    {selectedProject.start_date || "Non définie"}
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 text-[#647276]" />
+                  <span>
+                    <strong className="block text-xs font-medium text-[#647276]">Fin</strong>
+                    {selectedProject.end_date || "Non définie"}
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
+                  <Users size={16} className="mt-0.5 text-[#647276]" />
+                  <span>
+                    <strong className="block text-xs font-medium text-[#647276]">Créé par</strong>
+                    {selectedProject.created_by_username || "Non renseigné"}
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
+                  <CheckCircle2 size={16} className="mt-0.5 text-[#647276]" />
+                  <span>
+                    <strong className="block text-xs font-medium text-[#647276]">Tâches terminées</strong>
+                    {selectedProject.completed_task_count ?? 0} sur {selectedProject.task_count ?? 0}
+                  </span>
+                </div>
+
+                <div className="text-sm text-[#94A3A6]">
+                  <strong className="block text-xs font-medium text-[#647276]">Créé le</strong>
+                  {selectedProject.created_at
+                    ? new Date(selectedProject.created_at).toLocaleDateString("fr-FR")
+                    : "Non renseigné"}
+                </div>
+
+                <div className="text-sm text-[#94A3A6]">
+                  <strong className="block text-xs font-medium text-[#647276]">Dernière modification</strong>
+                  {selectedProject.updated_at
+                    ? new Date(selectedProject.updated_at).toLocaleDateString("fr-FR")
+                    : "Non renseignée"}
+                </div>
+
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-[#94A3A6]">
+                    <Clock3 size={16} className="text-[#647276]" />
+                    Progression
+                  </span>
+                  <span className="font-semibold text-[#B6FF00]">
+                    {(selectedProject.task_count ?? 0) > 0
+                      ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
+                      : 0}%
+                  </span>
+                </div>
+
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#1C292D]">
+                  <div
+                    className="h-full rounded-full bg-[#B6FF00]"
+                    style={{
+                      width: `${(selectedProject.task_count ?? 0) > 0
+                        ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
+                        : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+            </div>
+
+          </section>
+
+        </div>
+
+      )}
 
       {showModal && (
 

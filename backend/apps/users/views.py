@@ -13,6 +13,7 @@ from .permissions import IsAdminUser
 
 from .serializers import (
     AdminUserCreateSerializer,
+    CurrentUserSerializer,
     RegisterSerializer,
     UserSerializer,
 )
@@ -53,13 +54,28 @@ class CurrentUserView(APIView):
 
     def get(self, request):
 
-        serializer = UserSerializer(
+        serializer = CurrentUserSerializer(
             request.user
         )
 
         return Response(
             serializer.data
         )
+
+    def patch(self, request):
+
+        serializer = CurrentUserSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+        serializer.save()
+
+        return Response(serializer.data)
 
 
 class UserViewSet(ModelViewSet):
