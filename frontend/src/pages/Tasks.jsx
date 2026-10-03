@@ -4,7 +4,7 @@ import {
   AlertCircle,
   CalendarDays,
   CheckCircle2,
-  Circle,
+  GripVertical,
   Clock3,
   ListTodo,
   Pencil,
@@ -56,6 +56,12 @@ function Tasks() {
   // ==========================================
 
   const [updatingTask, setUpdatingTask] =
+    useState(null);
+
+  const [draggedTaskId, setDraggedTaskId] =
+    useState(null);
+
+  const [dragOverStatus, setDragOverStatus] =
     useState(null);
 
   const [deletingTask, setDeletingTask] =
@@ -805,50 +811,61 @@ function Tasks() {
 
 
   // ==========================================
-  // TERMINER UNE TÂCHE
+  // CHANGER LE STATUT PAR GLISSER-DÉPOSER
   // ==========================================
 
-  const handleCompleteTask = async (task) => {
+  const handleTaskStatusChange = async (task, status) => {
 
-    if (task.status === "DONE") {
+    if (
+      task.status === status ||
+      updatingTask !== null ||
+      !canCompleteTask(task)
+    ) {
       return;
     }
 
+    const previousStatus = task.status;
 
     try {
 
       setUpdatingTask(task.id);
-
       setError("");
 
+      setTasks((previous) =>
+        previous.map((item) =>
+          item.id === task.id
+            ? { ...item, status }
+            : item
+        )
+      );
 
       const response =
         await api.patch(
           `/tasks/${task.id}/`,
           {
-            status: "DONE",
+            status,
           }
         );
 
-
       setTasks((previous) =>
-
         previous.map((item) =>
-
           item.id === task.id
-
             ? response.data
-
             : item
-
         )
-
       );
 
     } catch (error) {
 
       console.error(error);
 
+      setTasks((previous) =>
+        previous.map((item) =>
+          item.id === task.id
+            ? { ...item, status: previousStatus }
+            : item
+        )
+      );
 
       setError(
         "Impossible de modifier la tâche."
@@ -857,12 +874,46 @@ function Tasks() {
     } finally {
 
       setUpdatingTask(null);
+      setDraggedTaskId(null);
+      setDragOverStatus(null);
 
     }
 
   };
 
 
+  const handleTaskDragStart = (event, task) => {
+
+    if (
+      !canCompleteTask(task) ||
+      updatingTask !== null
+    ) {
+      event.preventDefault();
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(task.id));
+    setDraggedTaskId(task.id);
+
+  };
+
+
+  const handleTaskDrop = (event, status) => {
+
+    event.preventDefault();
+    setDragOverStatus(null);
+
+    const taskId = event.dataTransfer.getData("text/plain");
+    const task = tasks.find((item) => String(item.id) === taskId);
+
+    if (task) {
+      handleTaskStatusChange(task, status);
+    }
+
+  };
+
+ 
   // ==========================================
   // SUPPRIMER
   // ==========================================
@@ -874,46 +925,26 @@ function Tasks() {
         `Voulez-vous vraiment supprimer "${task.title}" ?`
       );
 
-
     if (!confirmed) {
       return;
     }
 
-
     try {
-
       setDeletingTask(task.id);
-
       setError("");
 
-
-      await api.delete(
-        `/tasks/${task.id}/`
-      );
-
+      await api.delete(`/tasks/${task.id}/`);
 
       setTasks((previous) =>
-
-        previous.filter(
-          (item) =>
-            item.id !== task.id
-        )
-
+        previous.filter((item) => item.id !== task.id)
       );
 
     } catch (error) {
-
       console.error(error);
-
-
-      setError(
-        "Impossible de supprimer la tâche."
-      );
+      setError("Impossible de supprimer la tâche.");
 
     } finally {
-
       setDeletingTask(null);
-
     }
 
   };
@@ -929,10 +960,7 @@ function Tasks() {
       return true;
     }
 
-
-    return (
-      task.created_by === user?.id
-    );
+    return task.created_by === user?.id;
 
   };
 
@@ -954,143 +982,77 @@ function Tasks() {
   // SIGNALER SA DISPONIBILITÉ
   // ==========================================
 
-  const handleAvailabilityReport =
-    async () => {
+  const handleAvailabilityReport = async () => {
 
-      // --------------------------------------
-      // Vérifier l'équipe
-      // --------------------------------------
+    const memberTeams = teams.filter((team) =>
+      team.members?.some(
+        (member) =>
+          member.user === user?.id &&
+          member.is_active
+      )
+    );
 
-      const memberTeams =
-        teams.filter((team) =>
-          team.members?.some(
-            (member) =>
-              member.user === user?.id &&
-              member.is_active
-          )
-        );
+    const teamId = availabilityTeam || (
+      memberTeams.length > 0
+        ? String(memberTeams[0].id)
+        : ""
+    );
 
-      const teamId = availabilityTeam || (
-        memberTeams.length > 0
-          ? String(memberTeams[0].id)
-          : ""
+    if (!teamId) {
+      setError(
+        "Vous devez appartenir à une équipe pour signaler votre disponibilité."
+      );
+      return;
+    }
+
+    if (!availabilityTeam) {
+      setAvailabilityTeam(teamId);
+    }
+
+    if (availabilityReport) {
+      return;
+    }
+
+    try {
+      setReportingAvailability(true);
+      setError("");
+
+      const response = await api.post(
+        "/tasks/availability/",
+        {
+          team: Number(teamId),
+          message:
+            availabilityMessage.trim() ||
+            "Je n'ai aucune tâche actuellement.",
+        }
       );
 
-      if (!teamId) {
+      setAvailabilityReport(response.data);
+      setAvailabilityMessage("");
 
-        setError(
-          "Vous devez appartenir à une équipe pour signaler votre disponibilité."
-        );
+    } catch (error) {
+      console.error(
+        "Erreur disponibilité :",
+        error.response?.data || error
+      );
 
-        return;
+      const data = error.response?.data;
+
+      if (data?.team) {
+        setError(Array.isArray(data.team) ? data.team[0] : data.team);
+      } else if (data?.message) {
+        setError(Array.isArray(data.message) ? data.message[0] : data.message);
+      } else if (data?.detail) {
+        setError(data.detail);
+      } else {
+        setError("Impossible de signaler votre disponibilité.");
       }
 
-      if (!availabilityTeam && teamId) {
+    } finally {
+      setReportingAvailability(false);
+    }
 
-        setAvailabilityTeam(
-          teamId
-        );
-
-      }
-
-
-      // --------------------------------------
-      // Éviter le double signalement
-      // --------------------------------------
-
-      if (availabilityReport) {
-        return;
-      }
-
-
-      try {
-
-        setReportingAvailability(
-          true
-        );
-
-        setError("");
-
-
-        const response =
-          await api.post(
-            "/tasks/availability/",
-            {
-              team:
-                Number(
-                  teamId
-                ),
-
-              message:
-                availabilityMessage.trim() ||
-                "Je n'ai aucune tâche actuellement.",
-            }
-          );
-
-
-        setAvailabilityReport(
-          response.data
-        );
-
-
-        setAvailabilityMessage("");
-
-      } catch (error) {
-
-        console.error(
-          "Erreur disponibilité :",
-          error.response?.data ||
-          error
-        );
-
-
-        const data =
-          error.response?.data;
-
-
-        if (data?.team) {
-
-          setError(
-            Array.isArray(
-              data.team
-            )
-              ? data.team[0]
-              : data.team
-          );
-
-        } else if (data?.message) {
-
-          setError(
-            Array.isArray(
-              data.message
-            )
-              ? data.message[0]
-              : data.message
-          );
-
-        } else if (data?.detail) {
-
-          setError(
-            data.detail
-          );
-
-        } else {
-
-          setError(
-            "Impossible de signaler votre disponibilité."
-          );
-
-        }
-
-      } finally {
-
-        setReportingAvailability(
-          false
-        );
-
-      }
-
-    };
+  };
 
 
   // ==========================================
@@ -1100,22 +1062,13 @@ function Tasks() {
   const getStatusLabel = (status) => {
 
     const labels = {
-
       TODO: "À faire",
-
       IN_PROGRESS: "En cours",
-
       BLOCKED: "Bloquée",
-
       DONE: "Terminée",
-
     };
 
-
-    return (
-      labels[status] ||
-      status
-    );
+    return labels[status] || status;
 
   };
 
@@ -1123,26 +1076,13 @@ function Tasks() {
   const getStatusStyle = (status) => {
 
     const styles = {
-
-      TODO:
-        "bg-[#10191C] text-[#94A3A6] border-[#1C292D]",
-
-      IN_PROGRESS:
-        "bg-[#13231A] text-[#B6FF00] border-[#304800]",
-
-      BLOCKED:
-        "bg-[#2A1E0A] text-[#FFC107] border-[#4A3500]",
-
-      DONE:
-        "bg-[#152400] text-[#B6FF00] border-[#304800]",
-
+      TODO: "bg-[#10191C] text-[#94A3A6] border-[#1C292D]",
+      IN_PROGRESS: "bg-[#13231A] text-[#B6FF00] border-[#304800]",
+      BLOCKED: "bg-[#2A1E0A] text-[#FFC107] border-[#4A3500]",
+      DONE: "bg-[#152400] text-[#B6FF00] border-[#304800]",
     };
 
-
-    return (
-      styles[status] ||
-      styles.TODO
-    );
+    return styles[status] || styles.TODO;
 
   };
 
@@ -1150,26 +1090,13 @@ function Tasks() {
   const getPriorityStyle = (priority) => {
 
     const styles = {
-
-      LOW:
-        "text-[#94A3A6]",
-
-      MEDIUM:
-        "text-[#C4D000]",
-
-      HIGH:
-        "text-[#FFC107]",
-
-      URGENT:
-        "text-[#FF4D4D]",
-
+      LOW: "text-[#94A3A6]",
+      MEDIUM: "text-[#C4D000]",
+      HIGH: "text-[#FFC107]",
+      URGENT: "text-[#FF4D4D]",
     };
 
-
-    return (
-      styles[priority] ||
-      styles.MEDIUM
-    );
+    return styles[priority] || styles.MEDIUM;
 
   };
 
@@ -1418,7 +1345,7 @@ function Tasks() {
 
 
       {/* ======================================
-          LISTE DES TÂCHES
+          TABLEAU DES TÂCHES
       ======================================= */}
 
       {filteredTasks.length === 0 ? (
@@ -1456,9 +1383,59 @@ function Tasks() {
 
       ) : (
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
 
-          {filteredTasks.map((task) => {
+          {[
+            { status: "TODO", title: "À faire" },
+            { status: "IN_PROGRESS", title: "En cours" },
+            { status: "BLOCKED", title: "Bloquées" },
+            { status: "DONE", title: "Terminées" },
+          ].map((column) => {
+
+            const columnTasks = filteredTasks.filter(
+              (task) => task.status === column.status
+            );
+
+            return (
+
+              <section
+                key={column.status}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setDragOverStatus(column.status);
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) {
+                    setDragOverStatus(null);
+                  }
+                }}
+                onDrop={(event) => handleTaskDrop(event, column.status)}
+                className={`min-h-52 rounded-2xl border p-3 transition-colors ${
+                  dragOverStatus === column.status
+                    ? "border-[#B6FF00] bg-[#152400]"
+                    : "border-[#1C292D] bg-[#0B1215]"
+                }`}
+              >
+
+                <div className="mb-3 flex items-center justify-between px-1 py-2">
+                  <h2 className="font-semibold text-[#F1F5F2]">
+                    {column.title}
+                  </h2>
+                  <span className="rounded-full bg-[#10191C] px-2.5 py-1 text-xs text-[#94A3A6]">
+                    {columnTasks.length}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+
+                  {columnTasks.length === 0 && (
+                    <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-[#26363A] px-4 text-center text-sm text-[#647276]">
+                      Déposer une tâche ici
+                    </div>
+                  )}
+
+                  {columnTasks.map((task) => {
 
             const isDone =
               task.status === "DONE";
@@ -1470,6 +1447,11 @@ function Tasks() {
 
             const isDeleting =
               deletingTask === task.id;
+
+            const canDrag =
+              canCompleteTask(task) &&
+              !isUpdating &&
+              !isDeleting;
 
 
             const projectName =
@@ -1485,7 +1467,16 @@ function Tasks() {
 
               <div
                 key={task.id}
-                className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:border-[#304038]"
+                draggable={canDrag}
+                onDragStart={(event) => handleTaskDragStart(event, task)}
+                onDragEnd={() => {
+                  setDraggedTaskId(null);
+                  setDragOverStatus(null);
+                }}
+                title={canDrag ? "Glisser vers un statut pour déplacer la tâche" : undefined}
+                className={`rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:border-[#304038] ${
+                  canDrag ? "cursor-grab active:cursor-grabbing" : ""
+                } ${draggedTaskId === task.id ? "opacity-50" : ""}`}
               >
 
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -1494,38 +1485,13 @@ function Tasks() {
                   <div className="flex min-w-0 items-start gap-4">
 
 
-                    <button
-                      onClick={() =>
-                        handleCompleteTask(
-                          task
-                        )
-                      }
-                      disabled={
-                        isDone ||
-                        isUpdating ||
-                        isDeleting ||
-                        !canCompleteTask(task)
-                      }
-                      className={`mt-1 shrink-0 transition ${
-                        isDone
-
-                          ? "text-[#B6FF00]"
-
-                          : "text-[#47565A] hover:text-[#B6FF00]"
-                      }`}
-                    >
-
-                      {isDone ? (
-
-                        <CheckCircle2 size={23} />
-
-                      ) : (
-
-                        <Circle size={23} />
-
-                      )}
-
-                    </button>
+                    {canDrag && (
+                      <GripVertical
+                        size={20}
+                        className="mt-1 shrink-0 text-[#647276]"
+                        aria-hidden="true"
+                      />
+                    )}
 
 
                     <div className="min-w-0">
@@ -1685,32 +1651,6 @@ function Tasks() {
                       )}
 
 
-                      {!isDone && canCompleteTask(task) && (
-
-                        <button
-                          onClick={() =>
-                            handleCompleteTask(
-                              task
-                            )
-                          }
-                          disabled={
-                            isUpdating ||
-                            isDeleting
-                          }
-                          className="flex items-center gap-2 rounded-lg bg-[#152400] px-3 py-2 text-xs font-medium text-[#B6FF00] transition hover:bg-[#1D3200] disabled:opacity-50"
-                        >
-
-                          <CheckCircle2 size={15} />
-
-                          {isUpdating
-                            ? "..."
-                            : "Terminer"}
-
-                        </button>
-
-                      )}
-
-
                       {canManageTask(task) && (
 
                         <button
@@ -1746,6 +1686,13 @@ function Tasks() {
 
             );
 
+                  })}
+
+                </div>
+
+              </section>
+
+            );
           })}
 
         </div>
