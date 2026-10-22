@@ -7,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 
 import {
   CheckSquare,
-  Clock3,
   FolderKanban,
   ListTodo,
   ShieldCheck,
@@ -129,7 +128,7 @@ function AdminDashboard() {
         </h1>
 
         <p className="mt-2 text-[#94A3A6]">
-          Gérez les utilisateurs, équipes, projets et activités de Friday.
+          Gérez les utilisateurs, équipes et projets de la plateforme.
         </p>
 
       </div>
@@ -324,27 +323,6 @@ function AdminDashboard() {
 
           </button>
 
-
-          <button
-            type="button"
-            onClick={() => navigate("/admin/availability")}
-            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
-          >
-
-            <Clock3
-              size={20}
-              className="text-[#B6FF00]"
-            />
-
-            <h3 className="mt-4 font-medium text-[#F1F5F2]">
-              Disponibilités
-            </h3>
-
-            <p className="mt-1 text-sm text-[#647276]">
-              Consulter les signalements de disponibilité.
-            </p>
-
-          </button>
 
         </div>
 

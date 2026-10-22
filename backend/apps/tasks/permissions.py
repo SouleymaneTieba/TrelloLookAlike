@@ -142,7 +142,7 @@ class AvailabilityPermission(
             user.is_staff
             or user.is_superuser
         ):
-            return True
+            return not obj.is_automatic
 
         # ==========================
         # PROPRIÉTAIRE

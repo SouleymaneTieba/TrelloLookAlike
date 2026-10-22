@@ -122,6 +122,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     "avatar": message["avatar"],
                     "content": message["content"],
                     "created_at": message["created_at"],
+                    "reactions": message["reactions"],
                 },
             },
         )
@@ -133,6 +134,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         await self.send_json(
             event["message"]
+        )
+
+    async def chat_reaction(self, event):
+        await self.send_json(
+            {
+                "type": "reaction",
+                "message_id": event["message_id"],
+                "reacted_user_id": event["reacted_user_id"],
+                "reactions": event["reactions"],
+            }
         )
 
     # ==================================================
@@ -184,4 +195,5 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             "avatar": message.user.avatar,
             "content": message.content,
             "created_at": message.created_at.isoformat(),
+            "reactions": [],
         }

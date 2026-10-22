@@ -360,10 +360,10 @@ function NotificationDropdown({
                       notification
                     )
                   }
-                  className={`group flex w-full gap-3 border-b border-[#1C292D] px-5 py-4 text-left transition hover:bg-[#10191C] ${
+                  className={`group flex w-full gap-3 border-b border-[#1C292D] px-5 py-4 text-left transition hover:bg-[#FFE8D5] ${
                     notification.is_read
                       ? ""
-                      : "bg-[#0D1708]"
+                      : "bg-[#FFF3EB]"
                   }`}
                 >
 

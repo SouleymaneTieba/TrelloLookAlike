@@ -3,9 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CalendarDays,
-  CheckCircle2,
   GripVertical,
-  Clock3,
   ListTodo,
   Pencil,
   Plus,
@@ -100,31 +98,6 @@ function Tasks() {
 
 
   // ==========================================
-  // DISPONIBILITÉ
-  // ==========================================
-
-  const [availabilityReport, setAvailabilityReport] =
-    useState(null);
-
-  const [
-    reportingAvailability,
-    setReportingAvailability,
-  ] = useState(false);
-
-  const [
-    availabilityMessage,
-    setAvailabilityMessage,
-  ] = useState(
-    "Je n'ai aucune tâche actuellement."
-  );
-
-  const [
-    availabilityTeam,
-    setAvailabilityTeam,
-  ] = useState("");
-
-
-  // ==========================================
   // FORMULAIRE
   // ==========================================
 
@@ -187,7 +160,6 @@ function Tasks() {
         tasksResponse,
         projectsResponse,
         teamsResponse,
-        availabilityResponse,
       ] = await Promise.all([
 
         api.get("/tasks/"),
@@ -195,10 +167,6 @@ function Tasks() {
         api.get("/projects/"),
 
         api.get("/teams/"),
-
-        api.get(
-          "/tasks/availability/"
-        ),
 
       ]);
 
@@ -214,63 +182,7 @@ function Tasks() {
       const allTeams =
         teamsResponse.data;
 
-      const userTeams =
-        allTeams.filter((team) =>
-          team.members?.some(
-            (member) =>
-              member.user === user?.id &&
-              member.is_active
-          )
-        );
-
       setTeams(allTeams);
-
-
-      // --------------------------------------
-      // SIGNALement actif
-      // --------------------------------------
-
-      const reports =
-        availabilityResponse.data;
-
-
-      const myActiveReport =
-        reports.find(
-          (report) =>
-            report.user === user?.id &&
-            report.status === "ACTIVE"
-        );
-
-
-      setAvailabilityReport(
-        myActiveReport || null
-      );
-
-
-      // --------------------------------------
-      // Restaurer / préremplir l'équipe
-      // --------------------------------------
-
-      if (myActiveReport?.team) {
-
-        setAvailabilityTeam(
-          String(
-            myActiveReport.team
-          )
-        );
-
-      } else if (
-        !availabilityTeam &&
-        userTeams.length > 0
-      ) {
-
-        setAvailabilityTeam(
-          String(
-            userTeams[0].id
-          )
-        );
-
-      }
 
     } catch (error) {
 
@@ -979,83 +891,6 @@ function Tasks() {
 
 
   // ==========================================
-  // SIGNALER SA DISPONIBILITÉ
-  // ==========================================
-
-  const handleAvailabilityReport = async () => {
-
-    const memberTeams = teams.filter((team) =>
-      team.members?.some(
-        (member) =>
-          member.user === user?.id &&
-          member.is_active
-      )
-    );
-
-    const teamId = availabilityTeam || (
-      memberTeams.length > 0
-        ? String(memberTeams[0].id)
-        : ""
-    );
-
-    if (!teamId) {
-      setError(
-        "Vous devez appartenir à une équipe pour signaler votre disponibilité."
-      );
-      return;
-    }
-
-    if (!availabilityTeam) {
-      setAvailabilityTeam(teamId);
-    }
-
-    if (availabilityReport) {
-      return;
-    }
-
-    try {
-      setReportingAvailability(true);
-      setError("");
-
-      const response = await api.post(
-        "/tasks/availability/",
-        {
-          team: Number(teamId),
-          message:
-            availabilityMessage.trim() ||
-            "Je n'ai aucune tâche actuellement.",
-        }
-      );
-
-      setAvailabilityReport(response.data);
-      setAvailabilityMessage("");
-
-    } catch (error) {
-      console.error(
-        "Erreur disponibilité :",
-        error.response?.data || error
-      );
-
-      const data = error.response?.data;
-
-      if (data?.team) {
-        setError(Array.isArray(data.team) ? data.team[0] : data.team);
-      } else if (data?.message) {
-        setError(Array.isArray(data.message) ? data.message[0] : data.message);
-      } else if (data?.detail) {
-        setError(data.detail);
-      } else {
-        setError("Impossible de signaler votre disponibilité.");
-      }
-
-    } finally {
-      setReportingAvailability(false);
-    }
-
-  };
-
-
-  // ==========================================
   // HELPERS
   // ==========================================
 
@@ -1474,7 +1309,7 @@ function Tasks() {
                   setDragOverStatus(null);
                 }}
                 title={canDrag ? "Glisser vers un statut pour déplacer la tâche" : undefined}
-                className={`rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:border-[#304038] ${
+                className={`rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:border-orange-300 hover:bg-[#FFF3EB] ${
                   canDrag ? "cursor-grab active:cursor-grabbing" : ""
                 } ${draggedTaskId === task.id ? "opacity-50" : ""}`}
               >
@@ -1698,170 +1533,6 @@ function Tasks() {
         </div>
 
       )}
-
-
-      {/* ======================================
-          DISPONIBILITÉ
-      ======================================= */}
-
-      <div className="mt-6 rounded-2xl border border-dashed border-[#304038] bg-[#0B1215] p-5">
-
-
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-
-
-          <div className="flex items-start gap-3">
-
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#152400]">
-
-              <Clock3
-                size={18}
-                className="text-[#B6FF00]"
-              />
-
-            </div>
-
-
-            <div>
-
-              <p className="font-medium text-[#F1F5F2]">
-                Vous n'avez pas de tâche ?
-              </p>
-
-              <p className="mt-1 text-sm text-[#647276]">
-                Signalez votre disponibilité à votre chef de projet.
-              </p>
-
-            </div>
-
-          </div>
-
-
-          {availabilityReport ? (
-
-            <div className="flex items-center gap-2 rounded-lg border border-[#304800] bg-[#152400] px-4 py-2.5 text-sm font-medium text-[#B6FF00]">
-
-              <CheckCircle2 size={17} />
-
-              Disponibilité signalée
-
-            </div>
-
-          ) : (
-
-            <button
-              onClick={
-                handleAvailabilityReport
-              }
-              disabled={
-                reportingAvailability ||
-                !availabilityTeam
-              }
-              className="shrink-0 rounded-lg bg-[#B6FF00] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#C4FF33] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-
-              {reportingAvailability
-
-                ? "Signalement..."
-
-                : "Signaler ma disponibilité"}
-
-            </button>
-
-          )}
-
-        </div>
-
-
-        {!availabilityReport && (
-
-          <div className="mt-5 space-y-4">
-
-
-            {/* ==================================
-                ÉQUIPE
-            =================================== */}
-
-            <div>
-
-              <span className="block text-xs font-medium text-[#94A3A6]">
-                Équipe
-              </span>
-
-              <div className="mt-2 rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2]">
-                {teams.find(
-                  (team) => String(team.id) === availabilityTeam
-                )?.name || "Équipe de votre adhésion"}
-              </div>
-
-            </div>
-
-
-            {/* ==================================
-                MESSAGE
-            =================================== */}
-
-            <div>
-
-              <label className="mb-2 block text-xs font-medium text-[#94A3A6]">
-                Message facultatif
-              </label>
-
-
-              <textarea
-                value={availabilityMessage}
-                onChange={(event) =>
-                  setAvailabilityMessage(
-                    event.target.value
-                  )
-                }
-                rows={2}
-                placeholder="Ex : Je suis disponible pour une nouvelle tâche."
-                className="w-full resize-none rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none placeholder:text-[#647276] focus:border-[#B6FF00]"
-              />
-
-            </div>
-
-          </div>
-
-        )}
-
-
-        {availabilityReport && (
-
-          <div className="mt-4 rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3">
-
-            <p className="text-xs text-[#647276]">
-              Votre message
-            </p>
-
-
-            <p className="mt-1 text-sm text-[#94A3A6]">
-
-              {availabilityReport.message}
-
-            </p>
-
-
-            <p className="mt-2 text-xs text-[#647276]">
-
-              Équipe :{" "}
-
-              <span className="text-[#94A3A6]">
-
-                {availabilityReport.team_name ||
-
-                  `Équipe #${availabilityReport.team}`}
-
-              </span>
-
-            </p>
-
-          </div>
-
-        )}
-
-      </div>
 
 
       {/* ======================================

@@ -334,6 +334,7 @@ class TaskAvailabilityReportSerializer(
 
             "status",
             "status_label",
+            "is_automatic",
 
             "created_at",
             "resolved_at",
@@ -347,6 +348,7 @@ class TaskAvailabilityReportSerializer(
 
             "status",
             "status_label",
+            "is_automatic",
 
             "created_at",
             "resolved_at",

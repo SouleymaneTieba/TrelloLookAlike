@@ -1,7 +1,13 @@
-from rest_framework import permissions, viewsets
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 
 from .models import Message
 from .serializers import MessageSerializer
+from .services import toggle_message_reaction
 
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -33,6 +39,7 @@ class MessageViewSet(viewsets.ModelViewSet):
                     "user",
                     "team",
                 )
+                .prefetch_related("reactions")
                 .all()
                 .order_by(
                     "created_at"
@@ -49,6 +56,7 @@ class MessageViewSet(viewsets.ModelViewSet):
                 "user",
                 "team",
             )
+            .prefetch_related("reactions")
             .filter(
                 team__members__user=user,
                 team__members__is_active=True,
@@ -94,4 +102,37 @@ class MessageViewSet(viewsets.ModelViewSet):
 
         serializer.save(
             user=user
+        )
+
+    @action(detail=True, methods=["post"])
+    def react(self, request, pk=None):
+        message = self.get_object()
+        emoji = request.data.get("emoji", "")
+
+        try:
+            reactions = toggle_message_reaction(
+                message=message,
+                user=request.user,
+                emoji=emoji,
+            )
+        except ValueError as error:
+            raise ValidationError({"emoji": str(error)}) from error
+
+        event = {
+            "type": "chat_reaction",
+            "message_id": message.id,
+            "reacted_user_id": request.user.id,
+            "reactions": reactions,
+        }
+        async_to_sync(get_channel_layer().group_send)(
+            f"chat_team_{message.team_id}",
+            event,
+        )
+
+        return Response(
+            {
+                "message_id": message.id,
+                "reactions": reactions,
+            },
+            status=status.HTTP_200_OK,
         )

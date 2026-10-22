@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import Message
+from .services import get_message_reactions
 
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -25,6 +26,8 @@ class MessageSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    reactions = serializers.SerializerMethodField()
+
     class Meta:
 
         model = Message
@@ -38,6 +41,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "last_name",
             "avatar",
             "content",
+            "reactions",
             "created_at",
             "updated_at",
         ]
@@ -48,9 +52,16 @@ class MessageSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "avatar",
+            "reactions",
             "created_at",
             "updated_at",
         ]
+
+    def get_reactions(self, obj):
+        request = self.context.get("request")
+        if request is None:
+            return []
+        return get_message_reactions(obj, request.user)
 
     def validate_content(self, value):
 

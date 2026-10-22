@@ -102,19 +102,11 @@ function Register() {
 
         <section className="flex flex-col justify-center bg-[#0B1215] p-7 sm:p-10 lg:px-[14%] lg:py-14">
 
-          <div className="mb-10 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#152400]">
-              <span className="text-xl font-bold text-[#B6FF00]">
-                F
-              </span>
-            </div>
-
+          <div className="mb-10 flex flex-col items-start gap-3">
+            <img src="/orange-digital-center.svg" alt="Orange Digital Center" className="w-56 rounded-sm" />
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-[#B6FF00]">
-                Trell
-              </h1>
               <p className="text-xs text-[#647276]">
-                Project Management
+                Gestionnaire de tâches
               </p>
             </div>
           </div>

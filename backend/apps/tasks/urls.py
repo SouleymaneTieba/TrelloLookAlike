@@ -36,7 +36,6 @@ urlpatterns = [
         "tasks/availability/",
         TaskAvailabilityReportViewSet.as_view({
             "get": "list",
-            "post": "create",
         }),
         name="task-availability",
     ),

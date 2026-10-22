@@ -27,7 +27,7 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
 import NotificationDropdown from "../components/notifications/NotificationDropdown";
-import SettingsMenu from "../components/SettingsMenu";
+import ThemeToggle from "../components/ThemeToggle";
 
 
 function DashboardLayout() {
@@ -266,9 +266,9 @@ function DashboardLayout() {
     },
 
     {
-      name: "Équipes et Projets",
-      path: "/admin/teams",
-      icon: Users,
+      name: "Projets",
+      path: "/admin/projects",
+      icon: FolderKanban,
     },
 
   ];
@@ -287,9 +287,9 @@ function DashboardLayout() {
     },
 
     {
-      name: "Équipes et Projets",
-      path: "/teams",
-      icon: Users,
+      name: "Projets",
+      path: "/projects",
+      icon: FolderKanban,
     },
 
     {
@@ -378,37 +378,11 @@ function DashboardLayout() {
 
         {/* LOGO */}
 
-        <div className="flex h-20 items-center border-b border-[#1C292D] px-6">
-
+        <div className="flex h-20 items-center border-b border-[#1C292D] px-5">
           <div>
-
-            <div className="flex items-center gap-2">
-
-              {isAdmin && (
-
-                <ShieldCheck
-                  size={21}
-                  className="text-[#B6FF00]"
-                />
-
-              )}
-
-              <h1 className="text-2xl font-bold tracking-tight text-[#B6FF00]">
-                Trell 
-              </h1>
-
-            </div>
-
-            <p className="mt-0.5 text-xs text-[#647276]">
-
-              {isAdmin
-                ? "Back Office"
-                : "Project Manager"}
-
-            </p>
-
+            <img src="/orange-digital-center.svg" alt="Orange Digital Center" className="w-44 rounded-sm" />
+            <p className="mt-1 text-[11px] text-[#647276]">Gestionnaire de tâches</p>
           </div>
-
         </div>
 
 
@@ -488,9 +462,6 @@ function DashboardLayout() {
 
         <div className="border-t border-[#1C292D] px-3 py-4">
 
-          <SettingsMenu />
-
-
           <button
             onClick={logout}
             className="mt-3 flex w-full items-center gap-3 rounded-xl bg-[#152400] px-4 py-3 text-sm font-medium text-[#B6FF00] transition hover:bg-[#1D3200]"
@@ -525,21 +496,14 @@ function DashboardLayout() {
 
           <div>
 
-            <p className="text-sm text-[#647276]">
-
-              {isAdmin
-                ? "Administration"
-                : "Espace de travail"}
-
-            </p>
-
-            <p className="text-sm font-medium text-[#F1F5F2]">
-
-              {isAdmin
-                ? "Trell  Back Office"
-                : "Trell  Project Manager"}
-
-            </p>
+            {isAdmin ? (
+              <p className="text-sm font-medium text-[#F1F5F2]">Administration</p>
+            ) : (
+              <>
+                <p className="text-sm text-[#647276]">Espace de travail</p>
+                <p className="text-sm font-medium text-[#F1F5F2]">Gestionnaire de tâches</p>
+              </>
+            )}
 
           </div>
 
@@ -547,6 +511,8 @@ function DashboardLayout() {
           {/* RIGHT */}
 
           <div className="flex items-center gap-5">
+
+            <ThemeToggle />
 
 
             {/* ==================================================
@@ -610,7 +576,7 @@ function DashboardLayout() {
 
             {/* USER */}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 p-2">
 
               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#152400] font-semibold text-[#B6FF00]">
 

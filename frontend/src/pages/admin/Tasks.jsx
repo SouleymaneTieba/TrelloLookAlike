@@ -497,7 +497,7 @@ function Tasks() {
 
       case "DONE":
 
-        return "border-emerald-900/50 bg-emerald-950/30 text-emerald-400";
+        return "bg-[#152400] text-[#B6FF00] border-[#304800]";
 
       case "BLOCKED":
 
@@ -691,7 +691,7 @@ function Tasks() {
 
               <div
                 key={task.id}
-                className="grid gap-4 px-6 py-5 lg:grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_auto] lg:items-center"
+                className="grid gap-4 px-6 py-5 transition-colors hover:bg-[#FFF3EB] lg:grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_auto] lg:items-center"
               >
 
 

@@ -17,6 +17,9 @@ function Projects() {
   const [projects, setProjects] =
     useState([]);
 
+  const [teams, setTeams] =
+    useState([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -38,13 +41,17 @@ function Projects() {
       setLoading(true);
       setError("");
 
-      const response =
-        await api.get(
-          "/projects/"
-        );
+      const [projectsResponse, teamsResponse] = await Promise.all([
+        api.get("/projects/"),
+        api.get("/teams/"),
+      ]);
 
       setProjects(
-        response.data
+        projectsResponse.data
+      );
+
+      setTeams(
+        teamsResponse.data
       );
 
     } catch (error) {
@@ -93,6 +100,12 @@ function Projects() {
 
   }, [selectedProject]);
 
+  const selectedProjectTeam = selectedProject
+    ? teams.find((team) => Number(team.id) === Number(selectedProject.team))
+    : null;
+
+  const associatedMembers = selectedProjectTeam?.members || [];
+
 
   // ==========================================
   // STATUS
@@ -105,24 +118,14 @@ function Projects() {
     switch (status) {
 
       case "PLANNED":
-
-        return "border-blue-900/50 bg-blue-950/30 text-blue-400";
-
       case "IN_PROGRESS":
-
-        return "border-[#304800] bg-[#152400] text-[#B6FF00]";
-
       case "COMPLETED":
-
-        return "border-emerald-900/50 bg-emerald-950/30 text-emerald-400";
-
       case "ARCHIVED":
-
-        return "border-slate-700 bg-slate-900 text-slate-500";
+        return "border-orange-500/40 bg-orange-500/10 text-orange-300";
 
       default:
 
-        return "border-[#1C292D] bg-[#10191C] text-[#94A3A6]";
+        return "border-orange-500/40 bg-orange-500/10 text-orange-300";
 
     }
 
@@ -400,6 +403,7 @@ function Projects() {
                   <button
                     type="button"
                     key={project.id}
+                    aria-haspopup="dialog"
                     className="group w-full cursor-pointer rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 text-left transition hover:-translate-y-0.5 hover:border-[#304800] focus:outline-none focus:ring-2 focus:ring-[#B6FF00]"
                     onClick={() => setSelectedProject(project)}
                   >
@@ -532,14 +536,14 @@ function Projects() {
                           Progression
                         </span>
 
-                        <span className="font-semibold text-[#B6FF00]">
+                        <span className="font-semibold text-orange-400">
                           {progress}%
                         </span>
 
                       </div>
 
                       <div
-                        className="mt-2 h-2 overflow-hidden rounded-full bg-[#1C292D]"
+                        className="mt-2 h-2 overflow-hidden rounded-full border border-black/15 bg-white"
                         role="progressbar"
                         aria-label={`Progression du projet ${project.name}`}
                         aria-valuemin="0"
@@ -548,7 +552,7 @@ function Projects() {
                       >
 
                         <div
-                          className="h-full rounded-full bg-[#B6FF00] transition-all duration-500"
+                          className="h-full rounded-full bg-orange-500 transition-all duration-500"
                           style={{ width: `${progress}%` }}
                         />
 
@@ -574,6 +578,10 @@ function Projects() {
 
                     </div>
 
+                    <p className="mt-3 text-right text-xs font-medium text-orange-400">
+                      Cliquer pour voir tous les détails →
+                    </p>
+
                   </button>
 
                 );
@@ -594,22 +602,22 @@ function Projects() {
           onClick={() => setSelectedProject(null)}
         >
           <section
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#26363A] bg-[#10191C] p-6 shadow-2xl sm:p-8"
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#26363A] bg-[#10191C] p-5 shadow-2xl sm:p-8"
             role="dialog"
             aria-modal="true"
             aria-labelledby="project-details-title"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#152400]">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-100">
                   <FolderKanban size={20} className="text-[#B6FF00]" />
                 </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#B6FF00]">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">
                     Détails du projet
                   </p>
-                  <h2 id="project-details-title" className="mt-1 text-2xl font-semibold text-[#F1F5F2]">
+                  <h2 id="project-details-title" className="mt-1 break-words text-2xl font-semibold text-[#F1F5F2] sm:text-3xl">
                     {selectedProject.name}
                   </h2>
                 </div>
@@ -618,14 +626,14 @@ function Projects() {
               <button
                 type="button"
                 aria-label="Fermer les détails du projet"
-                className="rounded-lg p-2 text-[#94A3A6] transition hover:bg-[#1C292D] hover:text-[#F1F5F2]"
+                className="shrink-0 rounded-xl p-2 text-[#94A3A6] transition hover:bg-[#FFF3EB] hover:text-orange-700"
                 onClick={() => setSelectedProject(null)}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-[#1C292D] pb-5">
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${getStatusStyle(
                   selectedProject.status
@@ -644,16 +652,16 @@ function Projects() {
             </div>
 
             <div className="mt-6 space-y-5">
-              <div>
-                <h3 className="text-sm font-semibold text-[#F1F5F2]">Description</h3>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#94A3A6]">
+              <div className="rounded-2xl border border-orange-100 bg-[#FFF8F3] p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-orange-800">Description</h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#5C554F]">
                   {selectedProject.description || "Aucune description."}
                 </p>
               </div>
 
-              <div className="grid gap-4 border-y border-[#1C292D] py-5 sm:grid-cols-2">
-                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
-                  <CalendarDays size={16} className="mt-0.5 text-[#647276]" />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 shrink-0 text-orange-500" />
                   <span>
                     <strong className="block text-xs font-medium text-[#647276]">Début</strong>
                     {selectedProject.start_date
@@ -661,8 +669,8 @@ function Projects() {
                       : "Non défini"}
                   </span>
                 </div>
-                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
-                  <CalendarDays size={16} className="mt-0.5 text-[#647276]" />
+                <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 shrink-0 text-orange-500" />
                   <span>
                     <strong className="block text-xs font-medium text-[#647276]">Fin</strong>
                     {selectedProject.end_date
@@ -670,21 +678,21 @@ function Projects() {
                       : "Non définie"}
                   </span>
                 </div>
-                <div className="text-sm text-[#94A3A6]">
+                <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
                   <strong className="block text-xs font-medium text-[#647276]">Créé par</strong>
                   {selectedProject.created_by_username || "Non renseigné"}
                 </div>
-                <div className="text-sm text-[#94A3A6]">
+                <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
                   <strong className="block text-xs font-medium text-[#647276]">Tâches terminées</strong>
                   {selectedProject.completed_task_count ?? 0} sur {selectedProject.task_count ?? 0}
                 </div>
-                <div className="text-sm text-[#94A3A6]">
+                <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
                   <strong className="block text-xs font-medium text-[#647276]">Créé le</strong>
                   {selectedProject.created_at
                     ? new Date(selectedProject.created_at).toLocaleDateString("fr-FR")
                     : "Non renseigné"}
                 </div>
-                <div className="text-sm text-[#94A3A6]">
+                <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
                   <strong className="block text-xs font-medium text-[#647276]">Dernière modification</strong>
                   {selectedProject.updated_at
                     ? new Date(selectedProject.updated_at).toLocaleDateString("fr-FR")
@@ -692,18 +700,73 @@ function Projects() {
                 </div>
               </div>
 
-              <div>
+              <section aria-labelledby="project-members-title">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 id="project-members-title" className="text-base font-semibold text-[#F1F5F2]">
+                    Équipe associée
+                  </h3>
+                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-800">
+                    {associatedMembers.length}
+                  </span>
+                </div>
+
+                {associatedMembers.length === 0 ? (
+                  <p className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#647276]">
+                    Aucune personne n’est associée à cette équipe.
+                  </p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {associatedMembers.map((member) => {
+                      const fullName = [member.first_name, member.last_name]
+                        .filter(Boolean)
+                        .join(" ");
+
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex min-w-0 flex-col gap-3 rounded-2xl border border-[#1C292D] bg-[#0B1215] p-4 transition-colors hover:border-orange-300"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-800">
+                              {(fullName || member.username || "?").charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-[#F1F5F2]">
+                                {fullName || member.username}
+                              </p>
+                              <p className="truncate text-xs text-[#647276]">
+                                {member.email || `@${member.username}`}
+                                {member.job_title ? ` · ${member.job_title}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 pl-12">
+                            <span className="text-xs text-[#94A3A6]">
+                              {member.role_label || member.role || "Membre"}
+                            </span>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${member.is_active ? "bg-orange-50 text-orange-800" : "bg-slate-100 text-slate-600"}`}>
+                              {member.is_active ? "Actif" : "Inactif"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <div className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-[#94A3A6]">Progression</span>
-                  <span className="font-semibold text-[#B6FF00]">
+                  <span className="font-semibold text-orange-400">
                     {(selectedProject.task_count ?? 0) > 0
                       ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
                       : 0}%
                   </span>
                 </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#1C292D]">
+                <div className="mt-2 h-2 overflow-hidden rounded-full border border-black/15 bg-white">
                   <div
-                    className="h-full rounded-full bg-[#B6FF00]"
+                    className="h-full rounded-full bg-orange-500"
                     style={{
                       width: `${(selectedProject.task_count ?? 0) > 0
                         ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)

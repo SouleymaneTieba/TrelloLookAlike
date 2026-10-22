@@ -52,6 +52,7 @@ function Projects() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingProjectId, setDeletingProjectId] = useState(null);
 
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
@@ -66,6 +67,12 @@ function Projects() {
 
   const [form, setForm] =
     useState(initialForm);
+
+  const selectedProjectTeam = selectedProject
+    ? teams.find((team) => Number(team.id) === Number(selectedProject.team))
+    : null;
+
+  const associatedMembers = selectedProjectTeam?.members || [];
 
 
   // ==========================================
@@ -312,7 +319,10 @@ function Projects() {
       }
 
 
-      handleCloseModal();
+      setShowModal(false);
+      setEditingProject(null);
+      setForm(initialForm);
+      setFormError("");
 
     } catch (error) {
 
@@ -367,6 +377,8 @@ function Projects() {
       return;
     }
 
+    setDeletingProjectId(project.id);
+    setError("");
 
     try {
 
@@ -390,6 +402,10 @@ function Projects() {
       setError(
         "Impossible de supprimer ce projet."
       );
+
+    } finally {
+
+      setDeletingProjectId(null);
 
     }
 
@@ -421,17 +437,14 @@ function Projects() {
 
     switch (status) {
 
+      case "PLANNED":
       case "IN_PROGRESS":
-        return "border-[#304800] bg-[#152400] text-[#B6FF00]";
-
       case "COMPLETED":
-        return "border-emerald-900/50 bg-emerald-950/30 text-emerald-400";
-
       case "ARCHIVED":
-        return "border-[#1C292D] bg-[#10191C] text-[#647276]";
+        return "border-orange-500/40 bg-orange-500/10 text-orange-300";
 
       default:
-        return "border-blue-900/40 bg-blue-950/30 text-blue-400";
+        return "border-orange-500/40 bg-orange-500/10 text-orange-300";
 
     }
 
@@ -708,14 +721,14 @@ function Projects() {
                     Progression
                   </span>
 
-                  <span className="font-semibold text-[#B6FF00]">
+                  <span className="font-semibold text-orange-400">
                     {progress}%
                   </span>
 
                 </div>
 
                 <div
-                  className="mt-2 h-2 overflow-hidden rounded-full bg-[#1C292D]"
+                  className="mt-2 h-2 overflow-hidden rounded-full border border-black/15 bg-white"
                   role="progressbar"
                   aria-label={`Progression du projet ${project.name}`}
                   aria-valuemin="0"
@@ -724,7 +737,7 @@ function Projects() {
                 >
 
                   <div
-                    className="h-full rounded-full bg-[#B6FF00] transition-all duration-500"
+                    className="h-full rounded-full bg-orange-500 transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
 
@@ -761,12 +774,14 @@ function Projects() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      handleOpenEdit(project)
-                    }
-                    onClickCapture={(event) => event.stopPropagation()}
-                    className="rounded-lg p-2 text-[#647276] transition hover:bg-[#10191C] hover:text-[#B6FF00]"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleOpenEdit(project);
+                    }}
+                    className="rounded-lg p-2 text-[#647276] transition hover:bg-[#10191C] hover:text-[#B6FF00] disabled:cursor-not-allowed disabled:opacity-50"
                     title="Modifier"
+                    aria-label={`Modifier le projet ${project.name}`}
+                    disabled={saving || deletingProjectId === project.id}
                   >
 
                     <Edit3 size={16} />
@@ -776,15 +791,17 @@ function Projects() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      handleDelete(project)
-                    }
-                    onClickCapture={(event) => event.stopPropagation()}
-                    className="rounded-lg p-2 text-[#647276] transition hover:bg-red-950/30 hover:text-red-400"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDelete(project);
+                    }}
+                    className="rounded-lg p-2 text-[#647276] transition hover:bg-red-950/30 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
                     title="Supprimer"
+                    aria-label={`Supprimer le projet ${project.name}`}
+                    disabled={saving || deletingProjectId === project.id}
                   >
 
-                    <Trash2 size={16} />
+                    <Trash2 size={16} className={deletingProjectId === project.id ? "animate-pulse" : ""} />
 
                   </button>
 
@@ -816,7 +833,7 @@ function Projects() {
         >
 
           <section
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#1C292D] bg-[#0B1215] p-6 shadow-2xl sm:p-8"
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#1C292D] bg-[#0B1215] p-5 shadow-2xl sm:p-8"
             role="dialog"
             aria-modal="true"
             aria-labelledby="admin-project-details-title"
@@ -825,19 +842,19 @@ function Projects() {
 
             <div className="flex items-start justify-between gap-4">
 
-              <div className="flex items-start gap-3">
+              <div className="flex min-w-0 items-start gap-3">
 
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#152400]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-100">
                   <FolderKanban size={20} className="text-[#B6FF00]" />
                 </div>
 
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#B6FF00]">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">
                     Détails du projet
                   </p>
                   <h2
                     id="admin-project-details-title"
-                    className="mt-1 text-2xl font-semibold text-[#F1F5F2]"
+                    className="mt-1 break-words text-2xl font-semibold text-[#F1F5F2] sm:text-3xl"
                   >
                     {selectedProject.name}
                   </h2>
@@ -848,7 +865,7 @@ function Projects() {
               <button
                 type="button"
                 aria-label="Fermer les détails du projet"
-                className="rounded-lg p-2 text-[#647276] hover:bg-[#10191C] hover:text-white"
+                className="shrink-0 rounded-xl p-2 text-[#647276] transition hover:bg-[#FFF3EB] hover:text-orange-700"
                 onClick={() => setSelectedProject(null)}
               >
                 <X size={20} />
@@ -856,7 +873,7 @@ function Projects() {
 
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-[#1C292D] pb-5">
 
               <span
                 className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusClass(
@@ -875,55 +892,55 @@ function Projects() {
 
             <div className="mt-6 space-y-5">
 
-              <div>
-                <h3 className="text-sm font-semibold text-[#F1F5F2]">Description</h3>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#94A3A6]">
+              <div className="rounded-2xl border border-orange-100 bg-[#FFF8F3] p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-orange-800">Description</h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#5C554F]">
                   {selectedProject.description || "Aucune description pour ce projet."}
                 </p>
               </div>
 
-              <div className="grid gap-4 border-y border-[#1C292D] py-5 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 
-                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
-                  <CalendarDays size={16} className="mt-0.5 text-[#647276]" />
+                <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#10191C] p-3 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 shrink-0 text-orange-500" />
                   <span>
                     <strong className="block text-xs font-medium text-[#647276]">Début</strong>
                     {selectedProject.start_date || "Non définie"}
                   </span>
                 </div>
 
-                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
-                  <CalendarDays size={16} className="mt-0.5 text-[#647276]" />
+                <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#10191C] p-3 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 shrink-0 text-orange-500" />
                   <span>
                     <strong className="block text-xs font-medium text-[#647276]">Fin</strong>
                     {selectedProject.end_date || "Non définie"}
                   </span>
                 </div>
 
-                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
-                  <Users size={16} className="mt-0.5 text-[#647276]" />
+                <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#10191C] p-3 text-sm text-[#94A3A6]">
+                  <Users size={16} className="mt-0.5 shrink-0 text-orange-500" />
                   <span>
                     <strong className="block text-xs font-medium text-[#647276]">Créé par</strong>
                     {selectedProject.created_by_username || "Non renseigné"}
                   </span>
                 </div>
 
-                <div className="flex items-start gap-2 text-sm text-[#94A3A6]">
-                  <CheckCircle2 size={16} className="mt-0.5 text-[#647276]" />
+                <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#10191C] p-3 text-sm text-[#94A3A6]">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-orange-500" />
                   <span>
                     <strong className="block text-xs font-medium text-[#647276]">Tâches terminées</strong>
                     {selectedProject.completed_task_count ?? 0} sur {selectedProject.task_count ?? 0}
                   </span>
                 </div>
 
-                <div className="text-sm text-[#94A3A6]">
+                <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3 text-sm text-[#94A3A6]">
                   <strong className="block text-xs font-medium text-[#647276]">Créé le</strong>
                   {selectedProject.created_at
                     ? new Date(selectedProject.created_at).toLocaleDateString("fr-FR")
                     : "Non renseigné"}
                 </div>
 
-                <div className="text-sm text-[#94A3A6]">
+                <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3 text-sm text-[#94A3A6]">
                   <strong className="block text-xs font-medium text-[#647276]">Dernière modification</strong>
                   {selectedProject.updated_at
                     ? new Date(selectedProject.updated_at).toLocaleDateString("fr-FR")
@@ -932,22 +949,77 @@ function Projects() {
 
               </div>
 
-              <div>
+              <section aria-labelledby="admin-project-members-title">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 id="admin-project-members-title" className="text-base font-semibold text-[#F1F5F2]">
+                    Équipe associée
+                  </h3>
+                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-800">
+                    {associatedMembers.length}
+                  </span>
+                </div>
+
+                {associatedMembers.length === 0 ? (
+                  <p className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#647276]">
+                    Aucune personne n’est associée à cette équipe.
+                  </p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {associatedMembers.map((member) => {
+                      const fullName = [member.first_name, member.last_name]
+                        .filter(Boolean)
+                        .join(" ");
+
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex min-w-0 flex-col gap-3 rounded-2xl border border-[#1C292D] bg-[#10191C] p-4 transition-colors hover:border-orange-300"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-800">
+                              {(fullName || member.username || "?").charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-[#F1F5F2]">
+                                {fullName || member.username}
+                              </p>
+                              <p className="truncate text-xs text-[#647276]">
+                                {member.email || `@${member.username}`}
+                                {member.job_title ? ` · ${member.job_title}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 pl-12">
+                            <span className="text-xs text-[#94A3A6]">
+                              {member.role_label || member.role || "Membre"}
+                            </span>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${member.is_active ? "bg-orange-50 text-orange-800" : "bg-slate-100 text-slate-600"}`}>
+                              {member.is_active ? "Actif" : "Inactif"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <div className="rounded-2xl border border-[#1C292D] bg-[#10191C] p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-[#94A3A6]">
                     <Clock3 size={16} className="text-[#647276]" />
                     Progression
                   </span>
-                  <span className="font-semibold text-[#B6FF00]">
+                  <span className="font-semibold text-orange-400">
                     {(selectedProject.task_count ?? 0) > 0
                       ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
                       : 0}%
                   </span>
                 </div>
 
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#1C292D]">
+                <div className="mt-2 h-2 overflow-hidden rounded-full border border-black/15 bg-white">
                   <div
-                    className="h-full rounded-full bg-[#B6FF00]"
+                    className="h-full rounded-full bg-orange-500"
                     style={{
                       width: `${(selectedProject.task_count ?? 0) > 0
                         ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
@@ -990,7 +1062,7 @@ function Projects() {
 
                   {editingProject
                     ? "Modifiez les informations du projet."
-                    : "Créez un nouveau projet Trell ."}
+                    : "Créez un nouveau projet sur la plateforme."}
 
                 </p>
 
@@ -1039,7 +1111,7 @@ function Projects() {
                   name="name"
                   value={form.name}
                   onChange={handleChange}
-                  placeholder="Ex : Application Trell "
+                  placeholder="Ex : Application de gestion des tâches"
                   required
                   className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none placeholder:text-[#47565A] focus:border-[#B6FF00]"
                 />

@@ -1,7 +1,6 @@
 import {
   Bell,
   CheckSquare,
-  Clock3,
   FolderKanban,
   LayoutDashboard,
   LogOut,
@@ -27,7 +26,7 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
 import NotificationDropdown from "../components/notifications/NotificationDropdown";
-import SettingsMenu from "../components/SettingsMenu";
+import ThemeToggle from "../components/ThemeToggle";
 
 
 function AdminLayout() {
@@ -59,16 +58,10 @@ function AdminLayout() {
     },
 
     {
-      name: "Équipes et Projets",
-      path: "/admin/teams",
-      icon: Users,
+      name: "Projets",
+      path: "/admin/projects",
+      icon: FolderKanban,
     },
-
-    {
-      name: "Disponibilités",
-      path: "/admin/availability",
-      icon: Clock3,
-    }
 
   ];
 
@@ -350,20 +343,11 @@ function AdminLayout() {
 
         {/* LOGO */}
 
-        <div className="flex h-20 items-center border-b border-[#1C292D] px-6">
-
+        <div className="flex h-20 items-center border-b border-[#1C292D] px-5">
           <div>
-
-            <h1 className="text-2xl font-bold tracking-tight text-[#B6FF00]">
-              Trell
-            </h1>
-
-            <p className="mt-0.5 text-xs text-[#647276]">
-              Administration
-            </p>
-
+            <img src="/orange-digital-center.svg" alt="Orange Digital Center" className="w-44 rounded-sm" />
+            <p className="mt-1 text-[11px] text-[#647276]">Gestionnaire de tâches</p>
           </div>
-
         </div>
 
 
@@ -440,11 +424,6 @@ function AdminLayout() {
         <div className="border-t border-[#1C292D] px-3 py-4">
 
 
-          {/* SETTINGS */}
-
-          <SettingsMenu />
-
-
           {/* LOGOUT */}
 
           <button
@@ -481,13 +460,7 @@ function AdminLayout() {
 
           <div>
 
-            <p className="text-sm text-[#647276]">
-              Administration
-            </p>
-
-            <p className="text-sm font-medium text-[#F1F5F2]">
-              Trell Back Office
-            </p>
+            <p className="text-sm font-medium text-[#F1F5F2]">Administration</p>
 
           </div>
 
@@ -495,6 +468,8 @@ function AdminLayout() {
           {/* RIGHT */}
 
           <div className="flex items-center gap-5">
+
+            <ThemeToggle />
 
 
             {/* ==================================================
@@ -556,7 +531,7 @@ function AdminLayout() {
 
             {/* USER */}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 p-2">
 
 
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#152400] font-semibold text-[#B6FF00]">

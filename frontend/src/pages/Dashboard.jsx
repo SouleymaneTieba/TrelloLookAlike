@@ -276,7 +276,7 @@ function Dashboard() {
                 return (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between gap-4 px-6 py-5 transition hover:bg-[#0E171A]"
+                    className="flex items-center justify-between gap-4 px-6 py-5 transition hover:bg-[#FFF3EB]"
                   >
 
                     <div className="flex min-w-0 items-center gap-4">

@@ -371,7 +371,7 @@ function Users() {
           </h1>
 
           <p className="mt-2 text-[#94A3A6]">
-            Gérez les comptes des utilisateurs de Trell .
+            Gérez les comptes des utilisateurs de la plateforme.
           </p>
 
         </div>
@@ -645,7 +645,7 @@ function Users() {
                 </h2>
 
                 <p className="mt-1 text-sm text-[#647276]">
-                  Créez un nouveau compte Trell .
+                  Créez un nouveau compte sur la plateforme.
                 </p>
 
               </div>

@@ -5,6 +5,7 @@ from rest_framework import permissions, viewsets
 
 from apps.notifications.models import Notification
 from apps.notifications.services import NotificationService
+from apps.teams.models import TeamMember
 
 from .models import (
     Task,
@@ -244,6 +245,9 @@ class TaskAvailabilityReportViewSet(
 
     def get_queryset(self):
 
+        if getattr(self, "action", None) == "list":
+            self.sync_automatic_reports()
+
         user = self.request.user
 
         # ==================================================
@@ -280,6 +284,73 @@ class TaskAvailabilityReportViewSet(
             )
             .order_by("-created_at")
         )
+
+    def sync_automatic_reports(self):
+        memberships = list(
+            TeamMember.objects.filter(is_active=True)
+            .values_list("user_id", "team_id")
+        )
+        active_memberships = set(memberships)
+        assigned_task_pairs = set(
+            Task.objects.exclude(status=Task.Status.DONE)
+            .filter(assigned_to__isnull=False)
+            .values_list("assigned_to_id", "project__team_id")
+            .distinct()
+        )
+
+        automatic_reports = {
+            (report.user_id, report.team_id): report
+            for report in TaskAvailabilityReport.objects.filter(
+                is_automatic=True
+            )
+        }
+        active_manual_pairs = set(
+            TaskAvailabilityReport.objects.filter(
+                is_automatic=False,
+                status=TaskAvailabilityReport.Status.ACTIVE,
+            ).values_list("user_id", "team_id")
+        )
+
+        for user_id, team_id in memberships:
+            pair = (user_id, team_id)
+            has_open_task = pair in assigned_task_pairs
+            report = automatic_reports.get(pair)
+
+            if report is None:
+                if has_open_task:
+                    continue
+
+                # An existing manual report already signals this member.
+                if pair in active_manual_pairs:
+                    continue
+
+                report, _created = TaskAvailabilityReport.objects.get_or_create(
+                    user_id=user_id,
+                    team_id=team_id,
+                    is_automatic=True,
+                    defaults={
+                        "message": "Aucune tâche en cours : disponibilité signalée automatiquement.",
+                        "status": TaskAvailabilityReport.Status.ACTIVE,
+                    },
+                )
+                automatic_reports[pair] = report
+
+            expected_status = (
+                TaskAvailabilityReport.Status.RESOLVED
+                if has_open_task
+                else TaskAvailabilityReport.Status.ACTIVE
+            )
+            if report.status != expected_status:
+                report.status = expected_status
+                report.resolved_at = timezone.now() if has_open_task else None
+                report.save(update_fields=["status", "resolved_at"])
+
+        # Close automatic reports for memberships that are no longer active.
+        for pair, report in automatic_reports.items():
+            if pair not in active_memberships and report.status == TaskAvailabilityReport.Status.ACTIVE:
+                report.status = TaskAvailabilityReport.Status.RESOLVED
+                report.resolved_at = timezone.now()
+                report.save(update_fields=["status", "resolved_at"])
 
     # ==================================================
     # CREATE

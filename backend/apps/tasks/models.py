@@ -109,5 +109,16 @@ class TaskAvailabilityReport(models.Model):
         blank=True,
     )
 
+    is_automatic = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "team"],
+                condition=models.Q(is_automatic=True),
+                name="unique_automatic_availability_per_member_team",
+            ),
+        ]
+
     def __str__(self):
         return f"{self.user.username} - {self.status}"

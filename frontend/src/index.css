@@ -141,3 +141,91 @@ html[data-theme="light"] [class~="border-t-[#B6FF00]"] {
 html[data-theme="light"] [class~="focus\:border-[#B6FF00]"]:focus {
   border-color: #f97316;
 }
+
+html[data-theme="light"] .theme-toggle {
+  color: #ea580c;
+}
+
+html[data-theme="light"] .theme-toggle:hover {
+  background-color: #fff3eb;
+  color: #c2410c;
+}
+
+html[data-theme="dark"] .theme-toggle {
+  color: #fb923c;
+}
+
+html[data-theme="dark"] .theme-toggle:hover {
+  background-color: #2b211b;
+  color: #fdba74;
+}
+
+/* Keep orange-white surfaces from the light theme out of dark mode. */
+html[data-theme="dark"] [class~="bg-[#FFF3EB]"] {
+  background-color: #2b211b;
+}
+
+html[data-theme="dark"] [class~="bg-[#FFF8F3]"] {
+  background-color: #17191a;
+}
+
+html[data-theme="dark"] [class~="bg-orange-50"] {
+  background-color: #352519;
+}
+
+html[data-theme="dark"] [class~="bg-orange-100"] {
+  background-color: #4a2d1b;
+}
+
+html[data-theme="dark"] [class~="text-orange-800"],
+html[data-theme="dark"] [class~="text-orange-900"] {
+  color: #fdba74;
+}
+
+html[data-theme="dark"] [class~="text-orange-700"] {
+  color: #fb923c;
+}
+
+html[data-theme="dark"] [class~="border-orange-100"],
+html[data-theme="dark"] [class~="border-orange-200"] {
+  border-color: #65452f;
+}
+
+html[data-theme="dark"] [class~="border-[#EADFD7]"] {
+  border-color: #384247;
+}
+
+html[data-theme="dark"] [class~="text-[#5C554F]"] {
+  color: #d0d6d3;
+}
+
+html[data-theme="dark"] [class~="text-[#766E67]"] {
+  color: #aeb9b4;
+}
+
+html[data-theme="dark"] [class~="hover\:bg-[#FFF3EB]"]:hover,
+html[data-theme="dark"] [class~="hover\:bg-orange-50"]:hover {
+  background-color: #2b211b;
+}
+
+html[data-theme="dark"] [class~="hover\:text-orange-700"]:hover {
+  color: #fdba74;
+}
+
+html[data-theme="dark"] .chat-reaction:not([aria-pressed="true"]),
+html[data-theme="dark"] .chat-reaction-trigger,
+html[data-theme="dark"] .chat-reaction-picker {
+  background-color: #172024;
+  border-color: #384247;
+  color: #d5ddd8;
+}
+
+html[data-theme="dark"] .chat-reaction[aria-pressed="true"] {
+  background-color: #4a2d1b;
+  border-color: #c2773d;
+  color: #ffd7b0;
+}
+
+html[data-theme="dark"] .chat-reaction-option:hover {
+  background-color: #2b211b;
+}

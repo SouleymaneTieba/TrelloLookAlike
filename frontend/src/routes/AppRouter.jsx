@@ -9,7 +9,6 @@ import AdminUsers from "../pages/admin/Users";
 import AdminTeams from "../pages/admin/Teams";
 import AdminRoles from "../pages/admin/Roles";
 import AdminTasks from "../pages/admin/Tasks";
-import AdminAvailability from "../pages/admin/Availability";
 import AdminProjects from "../pages/admin/Projects";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
@@ -19,8 +18,6 @@ import Teams from "../pages/Teams";
 
 import Dashboard from "../pages/Dashboard";
 import Tasks from "../pages/Tasks";
-import Availability from "../pages/Availability";
-import Profile from "../pages/Profile";
 
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
@@ -99,11 +96,6 @@ function AppRouter() {
           />
 
           <Route
-            path="/availability"
-            element={<Availability />}
-          />
-
-          <Route
             path="/projects"
             element={<Projects />}
           />
@@ -125,20 +117,6 @@ function AppRouter() {
           <Route
             path="/chat"
             element={<Chat />}
-          />
-
-          <Route
-            path="/profile"
-            element={<Profile />}
-          />
-
-          <Route
-            path="/settings"
-            element={
-              <Placeholder
-                title="Paramètres"
-              />
-            }
           />
 
         </Route>
@@ -206,13 +184,6 @@ function AppRouter() {
           />
 
 
-          {/* Disponibilités */}
-
-          <Route
-            path="/admin/availability"
-            element={<AdminAvailability />}
-          />
-
 
           {/* Notifications */}
 
@@ -225,17 +196,6 @@ function AppRouter() {
             }
           />
 
-
-          {/* Settings */}
-
-          <Route
-            path="/admin/settings"
-            element={
-              <Placeholder
-                title="Paramètres"
-              />
-            }
-          />
 
         </Route>
 

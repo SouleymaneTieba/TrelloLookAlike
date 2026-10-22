@@ -1,10 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>ODC Taches</title>
+    <script>
+      const savedTheme = localStorage.getItem("theme");
+      document.documentElement.dataset.theme =
+        savedTheme === "dark" ? "dark" : "light";
+    </script>
   </head>
   <body>
     <div id="root"></div>

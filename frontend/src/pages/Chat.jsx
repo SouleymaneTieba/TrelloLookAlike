@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   MessageCircle,
   Send,
+  Smile,
   Users,
   Wifi,
   WifiOff,
@@ -9,6 +10,8 @@ import {
 
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+
+const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "👏", "🎉"];
 
 
 function Chat() {
@@ -26,6 +29,8 @@ function Chat() {
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   const [error, setError] = useState("");
+  const [reactionPickerMessageId, setReactionPickerMessageId] = useState(null);
+  const [reactingKey, setReactingKey] = useState("");
 
   const [connected, setConnected] = useState(false);
 
@@ -184,6 +189,23 @@ function Chat() {
         const newMessage =
           JSON.parse(event.data);
 
+        if (newMessage.type === "reaction") {
+          setMessages((currentMessages) => currentMessages.map((item) => (
+            item.id === newMessage.message_id
+              ? {
+                  ...item,
+                  reactions: newMessage.reactions.map((reaction) => ({
+                    ...reaction,
+                    reacted_by_me: newMessage.reacted_user_id === user?.id
+                      ? reaction.reacted_by_me
+                      : Boolean(item.reactions?.find((current) => current.emoji === reaction.emoji)?.reacted_by_me),
+                  })),
+                }
+              : item
+          )));
+          return;
+        }
+
         setMessages(
           (currentMessages) => {
 
@@ -311,6 +333,32 @@ function Chat() {
 
     setMessage("");
 
+  };
+
+
+  const handleReaction = async (messageItem, emoji) => {
+    const key = `${messageItem.id}:${emoji}`;
+    setReactingKey(key);
+    setError("");
+
+    try {
+      const response = await api.post(
+        `/chat/messages/${messageItem.id}/react/`,
+        { emoji }
+      );
+
+      setMessages((currentMessages) => currentMessages.map((item) => (
+        item.id === messageItem.id
+          ? { ...item, reactions: response.data.reactions }
+          : item
+      )));
+      setReactionPickerMessageId(null);
+    } catch (requestError) {
+      console.error(requestError);
+      setError("Impossible d'ajouter cette réaction.");
+    } finally {
+      setReactingKey("");
+    }
   };
 
 
@@ -728,6 +776,57 @@ function Chat() {
 
                           {item.content}
 
+                        </div>
+
+                        <div className={`mt-2 flex flex-wrap items-center gap-1 ${isMine ? "justify-end" : ""}`}>
+                          {(item.reactions || []).map((reaction) => (
+                            <button
+                              key={reaction.emoji}
+                              type="button"
+                              onClick={() => handleReaction(item, reaction.emoji)}
+                              disabled={reactingKey === `${item.id}:${reaction.emoji}`}
+                              aria-label={`${reaction.emoji}, ${reaction.count} réaction(s)`}
+                              aria-pressed={reaction.reacted_by_me}
+                              className={`chat-reaction rounded-full border px-2 py-1 text-xs transition-colors disabled:opacity-50 ${
+                                reaction.reacted_by_me
+                                  ? "border-orange-400 bg-orange-100 text-orange-900"
+                                  : "border-[#EADFD7] bg-white text-[#5C554F] hover:bg-[#FFF3EB]"
+                              }`}
+                            >
+                              {reaction.emoji} {reaction.count}
+                            </button>
+                          ))}
+
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setReactionPickerMessageId((currentId) => (
+                                currentId === item.id ? null : item.id
+                              ))}
+                              aria-label="Ajouter une réaction"
+                              aria-expanded={reactionPickerMessageId === item.id}
+                              className="chat-reaction-trigger rounded-full border border-[#EADFD7] bg-white p-1.5 text-[#766E67] transition-colors hover:bg-[#FFF3EB]"
+                            >
+                              <Smile size={15} />
+                            </button>
+
+                            {reactionPickerMessageId === item.id && (
+                              <div className={`chat-reaction-picker absolute top-full z-10 mt-1 flex gap-1 rounded-xl border border-[#EADFD7] bg-white p-1.5 shadow-lg ${isMine ? "right-0" : "left-0"}`}>
+                                {REACTION_EMOJIS.map((emoji) => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => handleReaction(item, emoji)}
+                                    disabled={reactingKey === `${item.id}:${emoji}`}
+                                    aria-label={`Réagir avec ${emoji}`}
+                                    className="chat-reaction-option rounded-lg p-1 text-lg transition-colors hover:bg-[#FFF3EB] disabled:opacity-50"
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                       </div>

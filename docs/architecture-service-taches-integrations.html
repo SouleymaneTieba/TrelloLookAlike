@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><title>Architecture du service de gestion des tâches</title>
+<style>
+@page { size:A4; margin:17mm 16mm 18mm; @bottom-left { content:"Service de gestion des tâches · Architecture actuelle et cible proposée"; color:#777; font:8pt Arial; } @bottom-right { content:"Page " counter(page) " / " counter(pages); color:#777; font:8pt Arial; } }
+*{box-sizing:border-box} html,body{background:#fff} body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font:10pt/1.48 Arial,Helvetica,sans-serif;color:#29343a;margin:0} h1,h2,h3{line-height:1.2;page-break-after:avoid} h1{font-size:30pt;color:#c85a14;margin:0 0 16pt} h2{font-size:18pt;color:#c85a14;border-bottom:2px solid #f2c9ad;padding-bottom:6pt;margin:0 0 12pt} h3{font-size:12pt;color:#35434a;margin:16pt 0 5pt} p{margin:5pt 0 9pt} ul,ol{padding-left:20pt;margin:5pt 0 10pt} li{margin:3pt 0} code{font:9pt Menlo,monospace;background:#f3f4f4;padding:1pt 3pt;border-radius:2pt} table{width:100%;border-collapse:collapse;margin:8pt 0 13pt;font-size:8.5pt;page-break-inside:auto} tr{page-break-inside:avoid} th{background:#fff0e7;color:#72330f;text-align:left} td,th{border:1px solid #dce1e3;padding:6pt;vertical-align:top} .cover{height:245mm;display:flex;flex-direction:column;justify-content:center;page-break-after:always}.eyebrow{letter-spacing:2pt;text-transform:uppercase;color:#c85a14;font-weight:bold;font-size:10pt}.sub{font-size:16pt;color:#526168;max-width:480pt}.meta{margin-top:30pt;color:#526168}.tag{display:inline-block;background:#fff0e7;color:#983e0c;padding:6pt 10pt;border-radius:4pt;font-weight:bold}.page{page-break-before:auto;break-before:auto}.toc li{padding:3pt 0}.lead{font-size:12pt;color:#48585f}.callout{border-left:4px solid #e87a2d;background:#fff7f1;padding:9pt 12pt;margin:10pt 0}.note{font-size:8.5pt;color:#5c696f}.diagram{width:100%;height:auto;max-height:225mm;object-fit:contain;margin:8pt 0 4pt;page-break-inside:avoid}.legend{font-size:8.5pt;color:#5b666b}.badge{font-weight:bold;color:#a84b11}.small{font-size:8.3pt}.end{background:#fff7f1;border:1px solid #f0c7a9;padding:13pt}.avoid{page-break-inside:avoid}
+</style>
+</head>
+<body>
+<section class="cover">
+<div class="eyebrow">Architecture logicielle · Version 1.1 · 22 octobre 2026</div>
+ <h1>Architecture du service de gestion des tâches et intégration avec les microservices</h1>
+ <p class="sub">État des lieux du code, architecture cible, contrats d’intégration, outils et trajectoire de mise en œuvre.</p>
+ <p style="margin-top:28pt"><span class="tag">Architecture actuelle et cible proposée</span></p>
+ <p class="meta">Document technique de cadrage<br>Les contrats externes et choix d’infrastructure restent à valider avec les équipes concernées.</p>
+</section>
+
+<section>
+<h2>Sommaire</h2>
+<ol class="toc">
+ <li>Résumé exécutif</li><li>État des lieux du code</li><li>Architecture actuelle du service Tâches</li><li>Services à connecter : Identity, Cohorte Management, Notifications</li><li>Architecture cible et flux cohorte/groupe</li><li>Procédure d’intégration et données échangées</li><li>Outils et rôles</li><li>Sécurité, fiabilité et validation</li><li>Plan de réalisation et décisions à prendre</li>
+</ol>
+<div class="callout"><b>Convention de lecture.</b> « Observé » désigne un composant ou comportement retrouvé dans le dépôt. « Cible proposée » décrit une évolution à construire. Les endpoints, exemples de payloads et échanges avec d’autres services sont des illustrations à valider : aucun contrat externe n’a été fourni.</div>
+</section>
+
+<section class="page">
+<h2>1. Résumé exécutif</h2>
+<p class="lead">Le service Tâches gère le cycle de vie des tâches. Il s’appuiera sur trois services métier : <b>Identity</b> pour les comptes et rôles, <b>Cohorte Management</b> pour connaître la cohorte et le groupe de chaque utilisateur, et <b>Notifications</b> pour l’envoi par e-mail, Telegram, SMS et les canaux disponibles.</p>
+<p>Le dépôt contient aujourd’hui un backend Django modulaire : tâches, utilisateurs, projets, équipes et notifications sont encore dans le même backend et la même configuration de base. La connexion aux trois services décrite ici est donc une cible à mettre en place ; leurs contrats et adresses ne sont pas présents dans le code consulté.</p>
+<p>Pour afficher la cohorte et le groupe, Tâches récupère l’identifiant utilisateur stable fourni par Identity, puis interroge Cohorte Management côté backend. La réponse est vérifiée et renvoyée à l’interface. Un cache court peut éviter des appels répétés. Tâches conserve la propriété des tâches ; chaque service garde la propriété de ses données.</p>
+<h3>Décisions structurantes</h3>
+<ul><li>Identity est la référence pour les comptes utilisateurs et leurs rôles.</li><li>Cohorte Management est la référence pour la cohorte et le groupe de chaque utilisateur.</li><li>Notifications choisit et exécute les canaux d’envoi ; Tâches lui transmet l’événement métier.</li><li>Tâches reste propriétaire des tâches et de leurs statuts. Les appels techniques passent par le backend.</li></ul>
+</section>
+
+<section class="page">
+<h2>2. État des lieux du code</h2>
+<table><thead><tr><th>Composant</th><th>Éléments constatés</th><th>Conséquence</th></tr></thead><tbody>
+<tr><td>Interface</td><td>React 19, Vite, React Router, Axios et Tailwind CSS sont déclarés dans le frontend.</td><td>Le navigateur appelle une API HTTP ; l’URL de base est actuellement locale et devrait être configurée par environnement.</td></tr>
+<tr><td>API</td><td>Django 6.1, Django REST Framework et SimpleJWT figurent dans les dépendances. Les routes sont regroupées sous <code>/api/</code>.</td><td>JWT local existe. Le fournisseur d’identité commun et l’authentification interservices ne sont pas établis dans le dépôt.</td></tr>
+<tr><td>Tâches</td><td><code>Task</code> contient titre, description, projet, créateur, assigné, statut, priorité, échéance et dates. Statuts : TODO, IN_PROGRESS, BLOCKED, DONE.</td><td>Le service gère déjà le cycle de vie. L’affectation et l’accès sont contrôlés par l’appartenance à l’équipe du projet.</td></tr>
+<tr><td>API de tâches</td><td>Un <code>ModelViewSet</code> CRUD est monté par routeur. Les routes incluent <code>/api/tasks/</code> et <code>/api/tasks/availability/</code>.</td><td>Le préfixe exact résulte du montage de l’application tâches sous <code>/api/</code>. La pagination et le contrat OpenAPI ne sont pas établis ici.</td></tr>
+<tr><td>Projets et équipes</td><td>Des modèles <code>Project</code>, <code>Team</code> et <code>TeamMember</code> sont dans le même backend. Le projet appartient à une équipe ; une tâche référence un projet.</td><td>Ces modules sont des dépendances locales actuelles, pas des services distants démontrés.</td></tr>
+<tr><td>Utilisateurs</td><td>Le modèle local étend Django <code>AbstractUser</code>. Les tâches pointent vers cet utilisateur pour l’assignation et la création.</td><td>Pas d’identifiant global externe dédié repéré ; les claims JWT et le rapprochement avec une identité externe restent à définir.</td></tr>
+<tr><td>Notifications et temps réel</td><td>La création et certains changements de tâches invoquent un service local de notifications. Channels et Daphne sont installés.</td><td>Une intégration locale est présente ; aucun broker d’événements interservices ni transport externe n’est démontré.</td></tr>
+<tr><td>Données et exécution</td><td>PostgreSQL est configuré ; Docker Compose démarre PostgreSQL pour le développement.</td><td>Une base est visible pour l’application. L’isolation de bases par service doit accompagner une vraie séparation de déploiement.</td></tr>
+</tbody></table>
+<p class="note">Le code consulté ne permet pas de confirmer la disponibilité, les URL, l’IAM, les contrats ou les technologies des services externes. Les services utilisateurs, projets, groupes, chat et notification ne sont donc pas considérés comme des dépendances distantes déjà établies.</p>
+</section>
+
+<section class="page">
+<h2>3. Architecture actuelle</h2>
+<p>Le schéma représente les frontières logiques trouvées dans le projet. Tous les modules Django listés tournent sous le même backend et partagent la base configurée ; leurs boîtes ne représentent pas des déploiements indépendants.</p>
+<img class="diagram" src="diagramme-contexte-taches.svg" alt="Diagramme de contexte de l’architecture actuelle du service de tâches">
+<p class="legend"><span class="badge">Orange plein</span> : composants observés dans le dépôt. Les modules utilisateurs, projets, équipes et notifications sont internes au backend actuel.</p>
+<h3>Comportements constatés utiles pour l’intégration</h3>
+<ul><li>Le CRUD de tâches utilise un queryset filtré par rôle et appartenance d’équipe ; les permissions sont appliquées côté backend.</li><li>La validation exige un projet. L’utilisateur assigné doit appartenir à l’équipe du projet ; un membre standard ne peut assigner qu’à lui-même.</li><li>Une création ou une transition de statut peut créer une notification au moyen du service local.</li><li>La tâche stocke des références relationnelles locales à Project et User. Remplacer ces modèles par des services indépendants impliquera une évolution du schéma, des validations et des règles d’accès.</li></ul>
+</section>
+
+<section class="page">
+<h2>4. Services à connecter et leurs rôles</h2>
+<table><thead><tr><th>Service</th><th>Responsabilité</th><th>Ce que Tâches utilise</th><th>Échange prévu</th></tr></thead><tbody>
+<tr><td><b>Identity</b></td><td>Gère les comptes utilisateurs, leur état, l’authentification et les rôles.</td><td>Identifiant stable, état actif/inactif, rôles ou permissions nécessaires.</td><td>Jeton signé pour authentifier chaque appel ; endpoint Identity pour vérifier le compte ou rafraîchir les rôles si nécessaire.</td></tr>
+<tr><td><b>Cohorte Management</b></td><td>Gère les cohortes, leurs groupes et les appartenances des utilisateurs.</td><td>ID et nom de cohorte, ID et nom de groupe, statut de l’appartenance.</td><td>Appel backend REST avec l’identifiant Identity de l’utilisateur ; lecture à l’affichage ou à l’affectation.</td></tr>
+<tr><td><b>Notifications</b></td><td>Gère les préférences, modèles, fournisseurs et envois par e-mail, Telegram, SMS et autres canaux disponibles.</td><td>Type d’événement, identifiant de tâche, destinataire Identity et message minimal.</td><td>Commande API ou événement après création/affectation/achèvement ; Notifications décide du canal.</td></tr>
+</tbody></table>
+<p class="note">Ces responsabilités suivent le périmètre demandé. Les URL, schémas de réponse, scopes, canaux effectivement activés et modalités d’accès restent à confirmer avec les équipes responsables.</p>
+</section>
+
+<section class="page">
+<h2>5. Architecture cible et flux cohorte/groupe</h2>
+<p>Le navigateur appelle uniquement l’API Tâches. Le backend valide l’identité via le jeton Identity, consulte Cohorte Management pour le groupe et la cohorte, puis demande l’envoi à Notifications quand un événement de tâche le justifie.</p>
+<img class="diagram" src="diagramme-composants-cible.svg" alt="Diagramme de composants de l’architecture cible">
+<p class="legend">Flèche continue : requête REST synchrone. Flèche pointillée : événement/commande asynchrone. Chaque service reste propriétaire de sa base.</p>
+<h3>Lecture de la cible</h3>
+<ul><li>Identity authentifie et fournit un identifiant stable ; les rôles signés protègent les endpoints Tâches.</li><li>Cohorte Management répond à « à quelle cohorte et à quel groupe appartient cet utilisateur ? » à partir de cet identifiant, pas de son courriel.</li><li>Notifications reçoit les événements de tâche et gère lui-même le canal de livraison.</li><li>REST suffit pour démarrer. Le broker n’est envisagé que si l’infrastructure et le besoin de traitement différé sont confirmés.</li></ul>
+</section>
+
+<section class="page">
+<h2>6. Parcours : retrouver cohorte et groupe</h2>
+<p>Quand un utilisateur ouvre son profil, une tâche ou un filtre par groupe, le frontend appelle Tâches. Le backend extrait l’identifiant utilisateur fiable du jeton Identity, vérifie les droits, puis consulte Cohorte Management. Les IDs et libellés reçus sont renvoyés à l’interface pour afficher la cohorte et le groupe.</p>
+<img class="diagram" src="diagramme-sequence-tache.svg" alt="Séquence d’accès à Identity, Cohorte Management et Notifications">
+<h3>Principes de réponse</h3>
+<ul><li>Sans appartenance, afficher « cohorte/groupe non renseigné » sans inventer de valeur.</li><li>Si Cohorte Management est indisponible, répondre avec une erreur temporaire ou un cache daté selon la fraîcheur requise.</li><li>Après affectation ou achèvement, envoyer à Notifications une commande idempotente ; ce service choisit e-mail, Telegram ou SMS selon ses règles/préférences.</li><li>Les données de Cohorte Management servent à l’affichage/filtrage ; les droits restent contrôlés côté serveur selon le contrat convenu.</li></ul>
+</section>
+
+<section class="page">
+<h2>7. Données et contrat de cohorte</h2>
+<img class="diagram" src="diagramme-propriete-donnees.svg" alt="Flux et propriété des données entre le service de tâches et les services externes">
+<table><thead><tr><th>Donnée</th><th>Propriétaire recommandé</th><th>Stockage côté tâches</th></tr></thead><tbody>
+<tr><td>Compte, identité, rôles</td><td>Identity</td><td>ID utilisateur stable ; claims de rôle signés. Cache du nom/avatar seulement pour affichage.</td></tr>
+<tr><td>Cohorte et groupe utilisateur</td><td>Cohorte Management</td><td>IDs et snapshot daté facultatif pour accélérer l’affichage ; la source reste Cohorte Management.</td></tr>
+<tr><td>Tâches et statuts</td><td>Service Tâches</td><td>Enregistrement canonique dans sa propre base.</td></tr>
+<tr><td>Canal, préférences et état d’envoi</td><td>Notifications</td><td>Référence à l’événement/tâche ; ne pas dupliquer les préférences ou journaux de livraison.</td></tr>
+</tbody></table>
+<h3>Références externes</h3>
+<p>Utiliser l’identifiant stable d’Identity pour interroger Cohorte Management. Ne pas rapprocher les personnes par courriel ou nom d’utilisateur, car ils peuvent changer. Si un snapshot est nécessaire, enregistrer IDs, libellés, statut et date de synchronisation ; il reste une copie d’affichage, jamais une autorité d’accès.</p>
+<h3>Contrat REST illustratif — à valider avec Cohorte Management</h3>
+<pre style="white-space:pre-wrap;background:#f4f5f5;padding:9pt;font:8.5pt Menlo">GET /api/v1/users/{identity_user_id}/cohort-membership
+Authorization: Bearer &lt;jeton-de-service&gt;
+X-Correlation-ID: &lt;id-requête&gt;
+
+200 OK
+{
+  "user_id": "usr_123",
+  "status": "active",
+  "cohort": { "id": "coh_2026", "name": "Cohorte 2026" },
+  "group":  { "id": "grp_04", "name": "Groupe 4" },
+  "updated_at": "2026-10-22T09:00:00Z"
+}</pre>
+<p>À décider avec l’équipe : plusieurs appartenances actives, absence de cohorte/groupe, statuts possibles, pagination, TTL du cache, erreurs et versionnement. Le chemin ci-dessus est un exemple, pas une route existante.</p>
+<p>La base de tâches ne doit contenir ni clé étrangère SQL vers la base distante, ni logique qui suppose que l’identifiant externe est un identifiant local auto-incrémenté. Les opérations de suppression/désactivation doivent suivre une politique convenue : conserver l’historique de tâche, rendre la référence inactive, empêcher de nouvelles affectations, et éviter de supprimer en cascade les tâches.</p>
+</section>
+
+<section class="page">
+<h2>8. Procédure d’intégration</h2>
+<ol>
+<li><b>Valider Identity.</b> Confirmer l’issuer/audience du jeton et son claim d’identifiant stable. Mapper l’utilisateur local existant vers cet ID ; définir comment récupérer l’état du compte et les rôles.</li>
+<li><b>Valider Cohorte Management.</b> Obtenir le contrat de lecture utilisateur → appartenances. Définir le cas sans groupe, plusieurs groupes/cohortes, utilisateur inactif, pagination, erreurs et fraîcheur.</li>
+<li><b>Créer les clients backend.</b> Configurer URLs et credentials par environnement, TLS, timeouts, scopes, correlation ID et validation du schéma de réponse. Le navigateur ne détient aucun secret technique.</li>
+<li><b>Exposer une réponse Tâches stable.</b> Par exemple, un endpoint « ma cohorte » protégé peut appeler Cohorte Management et renvoyer uniquement les champs nécessaires. Le chemin est à définir dans l’API du service Tâches.</li>
+<li><b>Brancher les écrans.</b> Afficher nom/ID de cohorte et groupe dans le profil, les détails ou filtres utiles ; prévoir chargement, indisponibilité et absence d’appartenance.</li>
+<li><b>Connecter Notifications.</b> Après la transaction, envoyer un événement d’affectation/achèvement avec un identifiant de déduplication. Notifications choisit e-mail, Telegram ou SMS selon les préférences et canaux configurés.</li>
+<li><b>Déployer progressivement.</b> D’abord en lecture et environnement de test, puis activer les règles métier ; surveiller erreurs/latences avant d’ajouter cache ou messagerie.</li>
+</ol>
+<h3>Exemple d’événement vers Notifications — proposition à valider</h3>
+<pre style="white-space:pre-wrap;background:#f4f5f5;padding:9pt;font:8.5pt Menlo">{
+  "event_id": "evt_...",
+  "type": "task.assigned",
+  "recipient_id": "identity-user-id",
+  "task_id": "task-123",
+  "data": { "title": "Préparer le rapport" }
+}</pre>
+<p class="note">Le service Notifications reste responsable du canal, du modèle et de l’état de livraison. Éviter d’envoyer des informations confidentielles dans le payload de notification.</p>
+</section>
+
+<section class="page">
+<h2>9. Modes de communication</h2>
+<table><thead><tr><th>Mode</th><th>Avantages</th><th>Limites</th><th>Quand le retenir</th></tr></thead><tbody>
+<tr><td>REST synchrone</td><td>Simple à comprendre ; réponse immédiate ; validation fraîche à la création ou affectation ; compatible avec Django REST.</td><td>Couplage de disponibilité/latence ; besoin de timeout, quota, authentification, stratégie de panne.</td><td>Première version pour vérifier droits et références nécessaires à une commande.</td></tr>
+<tr><td>Cache / synchronisation différée</td><td>Lectures rapides et meilleure tolérance aux pannes ; baisse de charge sur le service source.</td><td>Données potentiellement périmées ; invalidation, rafraîchissement et réconciliation à concevoir.</td><td>Libellés/profils d’affichage ou référentiels très lus ; ne pas l’utiliser comme autorité pour une permission sans règle de fraîcheur.</td></tr>
+<tr><td>Événements asynchrones</td><td>Faible couplage temporel ; propagation de changements à plusieurs consommateurs ; utile pour notifications.</td><td>Infrastructure, observabilité, rejouabilité, ordre, doublons, schémas et cohérence éventuelle à gérer.</td><td>Quand le besoin de livraison différée ou de diffusion à plusieurs consommateurs est avéré, via broker déjà standard si disponible.</td></tr>
+</tbody></table>
+<p><b>Trajectoire conseillée :</b> valider les contrats et faire REST pour les décisions synchrones ; mesurer les latences et répétitions ; ajouter un cache pour les données de lecture avec TTL convenu ; n’introduire des événements et un broker qu’avec un besoin métier/exploitation clair.</p>
+</section>
+
+<section class="page">
+<h2>10. Sécurité, résilience et exploitation</h2>
+<table><thead><tr><th>Sujet</th><th>Mesure cible</th></tr></thead><tbody>
+<tr><td>Identity</td><td>Confirmer le format de jeton et les claims signés (identifiant stable, rôles). Valider signature/JWKS, issuer, audience, expiration et désactivation ; ne jamais accepter un rôle envoyé librement par le navigateur.</td></tr>
+<tr><td>Service-à-service</td><td>OAuth2 Client Credentials ou mécanisme interne approuvé avec audience et scopes dédiés ; secrets dans un coffre, rotation ; TLS, et mTLS si standard disponible.</td></tr>
+<tr><td>Autorisation</td><td>Vérifier le rôle, l’appartenance et l’accès à l’objet côté backend pour chaque lecture/écriture. Appliquer moindre privilège et éviter l’énumération d’identifiants.</td></tr>
+<tr><td>Robustesse</td><td>Timeout par dépendance, reprises bornées avec jitter uniquement sur erreurs transitoires/idempotentes, coupe-circuit et plafonds. Retourner une erreur temporaire explicite si la vérification indispensable échoue.</td></tr>
+<tr><td>Événements</td><td>Identifiant d’événement, clé de déduplication, consommateur idempotent, retry borné, file d’erreurs/rejeu, version du schéma et mesure du retard.</td></tr>
+<tr><td>Observabilité</td><td>Identifiant de corrélation transmis entre appels ; logs structurés sans jetons ni données sensibles ; latence, taux d’erreur, disponibilité dépendance et traces distribuées selon la plateforme.</td></tr>
+<tr><td>Données personnelles</td><td>Minimiser les champs reçus, limiter la rétention des snapshots et appliquer les règles d’accès/suppression convenues. Ne pas journaliser les payloads complets.</td></tr>
+</tbody></table>
+<div class="callout"><b>Point de préparation :</b> avant exposition en production, configurer les secrets et paramètres par environnement, désactiver le mode debug, définir les hôtes et origines autorisés et ne conserver aucun secret dans le dépôt ou les journaux.</div>
+</section>
+
+<section class="page">
+<h2>11. Outils et rôles</h2>
+<table><thead><tr><th>Outil</th><th>Rôle</th><th>Présence actuelle</th><th>Décision / usage proposé</th></tr></thead><tbody>
+<tr><td>Django REST Framework</td><td>Endpoints REST, sérialisation, permissions et validation des commandes de tâche.</td><td>Présent.</td><td>Conserver pour l’API du service.</td></tr>
+<tr><td>Axios</td><td>Appels HTTP du navigateur vers l’API de tâches.</td><td>Présent.</td><td>Conserver ; base URL par environnement ; aucun secret technique côté client.</td></tr>
+<tr><td>httpx ou requests</td><td>Client HTTP backend-à-backend ; timeouts, headers de corrélation et erreurs contrôlées.</td><td>Non repéré dans les dépendances.</td><td>Ajouter un seul client, selon le standard Python de l’équipe ; centraliser configuration et politique de retry.</td></tr>
+<tr><td>OIDC / JWT + JWKS</td><td>Vérifier côté Tâches la signature du jeton Identity et lire l’ID stable/rôles.</td><td>SimpleJWT local présent ; fédération OIDC/JWKS non repérée.</td><td>À définir avec Identity. Éviter un appel réseau à chaque requête si la validation locale du jeton signé suffit.</td></tr>
+<tr><td>API Cohorte Management</td><td>Résoudre l’ID Identity en cohorte(s) et groupe(s) pour affichage/filtrage.</td><td>Non configurée dans le dépôt.</td><td>Contrat à valider ; appeler depuis le backend, cache court facultatif.</td></tr>
+<tr><td>API Notifications</td><td>Transmettre un événement de tâche ; service distant gère e-mail, Telegram, SMS et autres canaux.</td><td>Notifications locales appelées dans Django ; canaux externes non constatés.</td><td>À connecter via API idempotente ou broker validé ; ne pas coder les fournisseurs de canal dans Tâches.</td></tr>
+<tr><td>OpenAPI / drf-spectacular</td><td>Contrat généré/documenté, revue de schéma et génération éventuelle de clients.</td><td>Non repéré.</td><td>À envisager tôt pour fixer le contrat public et vérifier les changements.</td></tr>
+<tr><td>PostgreSQL</td><td>Stockage transactionnel des tâches et données possédées localement.</td><td>Présent ; configuration locale + Compose.</td><td>Garder dédié au service si les frontières microservices sont séparées ; migrations versionnées.</td></tr>
+<tr><td>Docker Compose</td><td>Environnement de développement multi-conteneurs reproductible.</td><td>Présent pour PostgreSQL.</td><td>Étendre seulement aux dépendances de développement effectivement retenues.</td></tr>
+<tr><td>Redis</td><td>Cache partagé, verrou ou support de tâches différées selon l’architecture.</td><td>Non repéré.</td><td>Optionnel ; définir invalidation/TTL et besoin avant adoption.</td></tr>
+<tr><td>Celery</td><td>Exécuter des rafraîchissements ou livraisons hors requête HTTP.</td><td>Non repéré.</td><td>Optionnel avec Redis/RabbitMQ ; ne pas l’ajouter pour une intégration REST simple.</td></tr>
+<tr><td>RabbitMQ / Kafka / broker standard</td><td>Transport d’événements asynchrones entre services.</td><td>Aucun broker interservice repéré ; Channels installé pour le temps réel.</td><td>Confirmer l’infrastructure existante ; Django Channels n’est pas le broker métier par défaut.</td></tr>
+<tr><td>OpenTelemetry et observabilité</td><td>Traces interservices, métriques et diagnostic des dépendances.</td><td>Non repéré dans les dépendances.</td><td>Adopter le standard d’exploitation commun ; commencer au minimum avec logs structurés et métriques API.</td></tr>
+<tr><td>Tests de contrat/API</td><td>Protéger la compatibilité du contrat entre producteur et consommateur.</td><td>Outil de contrat non repéré.</td><td>Choisir pytest/outil contractuel ou tests d’intégration déjà standard ; inclure erreurs et versions.</td></tr>
+</tbody></table>
+</section>
+
+<section class="page">
+<h2>12. Plan de réalisation et critères d’acceptation</h2>
+<table><thead><tr><th>Étape</th><th>Livrable</th><th>Critère d’acceptation</th></tr></thead><tbody>
+<tr><td>1. Cartographier les frontières</td><td>Liste des services réels, propriétaires de données, environnements et responsables.</td><td>Chaque domaine externe a un propriétaire confirmé ; modules locaux explicitement distingués des services réseau.</td></tr>
+<tr><td>2. Fixer les contrats</td><td>Spécifications OpenAPI/version, modèle d’identité, erreurs, scopes et disponibilité.</td><td>Exemples et scénarios d’erreur validés conjointement ; identifiant stable défini.</td></tr>
+<tr><td>3. Choisir le modèle de référence</td><td>Migrations pour identifiants externes et snapshot éventuel.</td><td>Pas de FK interbase ; contrainte d’unicité et stratégie des références inactives documentées.</td></tr>
+<tr><td>4. Implémenter le client backend</td><td>Client centralisé, configuration par environnement, credentials, timeout et corrélation.</td><td>Secrets absents du frontend/logs ; pannes distantes produisent des erreurs maîtrisées ; aucune reprise infinie.</td></tr>
+<tr><td>5. Exposer les opérations tâches</td><td>Endpoints protégés, contrat API, filtres et droits.</td><td>Un utilisateur ne lit/modifie que les tâches accessibles ; création vérifie projet/assigné auprès de leurs sources.</td></tr>
+<tr><td>6. Brancher l’interface</td><td>Affichage des attributs autorisés et états chargement/erreur.</td><td>UI ne contient pas de clé de service ; absence d’une donnée externe n’efface pas la tâche.</td></tr>
+<tr><td>7. Observer puis déployer</td><td>Dashboards, alertes, runbook, déploiement progressif et retour arrière.</td><td>Latence/erreurs de dépendance visibles ; seuils, propriétaires et conduite de panne définis.</td></tr>
+</tbody></table>
+<h3>Découpage conseillé</h3>
+<ol><li>Livrer d’abord le contrat et la lecture synchrone minimale pour l’identité et les droits.</li><li>Ajouter cache et rafraîchissement uniquement pour les données d’affichage fréquemment consultées.</li><li>Ajouter notifications asynchrones quand la livraison différée ou le découplage devient nécessaire.</li><li>Mesurer avant d’étendre la solution aux autres domaines.</li></ol>
+</section>
+
+<section class="page">
+<h2>13. Scénarios de validation</h2>
+<table><thead><tr><th>Scénario</th><th>Comportement attendu</th></tr></thead><tbody>
+<tr><td>Utilisateur inconnu ou désactivé</td><td>Refus clair d’assignation ; aucune tâche partiellement créée.</td></tr>
+<tr><td>Projet inexistant, archivé ou inaccessible</td><td>Refus conforme au contrat ; ne pas accepter un identifiant simplement parce qu’il est syntaxiquement valide.</td></tr>
+<tr><td>Utilisateur sans cohorte/groupe</td><td>Réponse métier explicite « non renseigné » ; aucun groupe ou cohorte inventé.</td></tr>
+<tr><td>Cohorte Management indisponible ou utilisateur inconnu</td><td>Erreur temporaire ou réponse de cache datée selon règle définie ; aucun rapprochement par courriel.</td></tr>
+<tr><td>Appartenance modifiée</td><td>Le rafraîchissement fait apparaître le groupe courant dans le délai de fraîcheur convenu ; le cache expiré ne fait pas autorité.</td></tr>
+<tr><td>Absence d’appartenance ou utilisateur hors équipe</td><td>Refus d’accès/affectation ; aucune fuite d’information sur les objets non autorisés.</td></tr>
+<tr><td>Service distant lent ou indisponible</td><td>Timeout borné, identifiant de corrélation retourné/logué, réponse temporaire ; interface conserve son état et permet réessai contrôlé.</td></tr>
+<tr><td>Cache expiré ou obsolète</td><td>La règle distingue les données d’affichage et les décisions d’autorisation ; rafraîchissement ou échec fermé selon criticité.</td></tr>
+<tr><td>Requête répétée après coupure</td><td>Pas de doublon de tâche/notification si une clé d’idempotence ou une déduplication est promise.</td></tr>
+<tr><td>Référence supprimée/désactivée après création</td><td>Historique de tâche conservé ; nouvelle affectation bloquée ; comportement de l’affichage défini.</td></tr>
+<tr><td>Évolution API externe</td><td>Compatibilité contrôlée par version et contrat ; alerte en CI avant déploiement incompatible.</td></tr>
+<tr><td>Permissions et isolation</td><td>Tests de lecture, création, mise à jour et suppression par rôle, membre, non-membre et administrateur.</td></tr>
+</tbody></table>
+</section>
+
+<section class="page">
+<h2>14. Décisions à prendre et prochaines étapes</h2>
+<h3>Questions aux équipes responsables</h3>
+<ul><li>Quel identifiant Identity stable utiliser et quels rôles doit consommer Tâches ? Comment valider les jetons (JWKS/OIDC ou autre) ?</li><li>Quel endpoint de Cohorte Management renvoie les appartenances par ID utilisateur ? Un utilisateur peut-il avoir plusieurs cohortes ou groupes ?</li><li>Quel délai de fraîcheur est requis pour refléter un changement de groupe ? Une lecture cache est-elle acceptable ?</li><li>Quelle API ou quels événements Notifications accepte-t-il ? Comment définir le destinataire, la déduplication, les préférences et canaux actifs (e-mail, Telegram, SMS) ?</li><li>Quels scopes de service, URLs par environnement, quotas et niveaux de disponibilité sont prévus ?</li><li>Existe-t-il un broker, un coffre à secrets et un standard de logs/métriques à réutiliser ?</li></ul>
+<h3>Recommandation finale</h3>
+<div class="end"><p><b>Ordre d’intégration conseillé :</b> établir l’identité stable et les jetons avec Identity ; intégrer ensuite la lecture cohorte/groupe auprès de Cohorte Management ; enfin connecter Notifications pour les événements tâche assignée/terminée.</p><p>Tâches appelle les deux premiers services en REST pour afficher et vérifier l’identité/l’appartenance. Les notifications peuvent être émises via API au départ, puis de façon asynchrone si un broker standard est disponible. Chaque microservice garde sa base et ses règles métier.</p><p class="small"><b>Prochaine action :</b> valider les contrats Identity et Cohorte Management, notamment le claim utilisateur et la réponse d’appartenance, puis définir le contrat événement/API de Notifications.</p></div>
+<p class="note" style="margin-top:18pt">Fin du document · Version 1.1 · Architecture actuelle observée et cible proposée</p>
+</section>
+</body></html>
