@@ -34,7 +34,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
         fields = [
             "id",
-            "team",
+            "project",
             "user",
             "username",
             "first_name",
@@ -45,6 +45,10 @@ class MessageSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+        extra_kwargs = {
+            "project": {"required": True},
+        }
 
         read_only_fields = [
             "user",

@@ -59,11 +59,12 @@ const PRIORITIES = [
 const initialForm = {
   title: "",
   description: "",
-  project: "",
+  feature: "",
   assigned_to: "",
   status: "TODO",
   priority: "MEDIUM",
-  deadline: "",
+  start_date: "",
+  end_date: "",
 };
 
 
@@ -72,8 +73,7 @@ function Tasks() {
   const [tasks, setTasks] = useState([]);
 
   const [projects, setProjects] = useState([]);
-
-  const [teams, setTeams] = useState([]);
+  const [features, setFeatures] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
@@ -104,17 +104,12 @@ function Tasks() {
       setLoading(true);
       setError("");
 
-      const [
-        tasksResponse,
-        projectsResponse,
-        teamsResponse,
-      ] = await Promise.all([
+      const [tasksResponse, projectsResponse, featuresResponse] = await Promise.all([
 
         api.get("/tasks/"),
 
         api.get("/projects/"),
-
-        api.get("/teams/"),
+        api.get("/features/"),
 
       ]);
 
@@ -126,11 +121,7 @@ function Tasks() {
       setProjects(
         projectsResponse.data
       );
-
-      setTeams(
-        teamsResponse.data
-      );
-
+      setFeatures(featuresResponse.data);
 
     } catch (error) {
 
@@ -174,9 +165,9 @@ function Tasks() {
 
       [name]: value,
 
-      // Si le projet change,
+      // Si la fonctionnalité change,
       // on réinitialise l'utilisateur
-      ...(name === "project"
+      ...(name === "feature"
         ? {
             assigned_to: "",
           }
@@ -195,30 +186,17 @@ function Tasks() {
     projects.find(
       (project) =>
         project.id === Number(
-          form.project
+          features.find((feature) => feature.id === Number(form.feature))?.project
         )
     );
 
 
   // ==========================================
-  // ÉQUIPE DU PROJET
-  // ==========================================
-
-  const selectedTeam =
-    selectedProject
-      ? teams.find(
-          (team) =>
-            team.id === selectedProject.team
-        )
-      : null;
-
-
-  // ==========================================
-  // MEMBRES DISPONIBLES
+  // MEMBRES DU PROJET
   // ==========================================
 
   const availableMembers =
-    selectedTeam?.members || [];
+    selectedProject?.member_details || [];
 
 
   // ==========================================
@@ -253,8 +231,8 @@ function Tasks() {
       description:
         task.description || "",
 
-      project:
-        task.project || "",
+      feature:
+        task.feature || "",
 
       assigned_to:
         task.assigned_to || "",
@@ -265,10 +243,8 @@ function Tasks() {
       priority:
         task.priority || "MEDIUM",
 
-      deadline:
-        task.deadline
-          ? task.deadline.slice(0, 16)
-          : "",
+      start_date: task.start_date || "",
+      end_date: task.end_date || "",
 
     });
 
@@ -310,10 +286,10 @@ function Tasks() {
 
     setFormError("");
 
-    if (!form.project) {
+    if (!form.feature) {
 
       setFormError(
-        "Veuillez sélectionner un projet."
+        "Veuillez sélectionner une fonctionnalité."
       );
 
       return;
@@ -333,8 +309,8 @@ function Tasks() {
         description:
           form.description,
 
-        project:
-          Number(form.project),
+        feature:
+          Number(form.feature),
 
         assigned_to:
           form.assigned_to
@@ -347,10 +323,8 @@ function Tasks() {
         priority:
           form.priority,
 
-        deadline:
-          form.deadline
-            ? form.deadline
-            : null,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
 
       };
 
@@ -711,20 +685,11 @@ function Tasks() {
                 </div>
 
 
-                {/* PROJECT */}
+                {/* FEATURE / PROJECT */}
 
                 <div>
-
-                  <p className="text-sm text-[#94A3A6]">
-                    {task.project_name ||
-                      "—"}
-                  </p>
-
-                  <p className="mt-1 text-xs text-[#47565A]">
-                    {task.team_name ||
-                      "—"}
-                  </p>
-
+                  <p className="text-sm text-[#94A3A6]">{task.feature_title || "—"}</p>
+                  <p className="mt-1 text-xs text-[#47565A]">{task.project_name || "—"}</p>
                 </div>
 
 
@@ -941,47 +906,24 @@ function Tasks() {
               </div>
 
 
-              {/* PROJECT */}
+              {/* FEATURE */}
 
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">
-                  Projet
-                </label>
-
+                <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Fonctionnalité</label>
                 <select
-                  name="project"
-                  value={form.project}
+                  name="feature"
+                  value={form.feature}
                   onChange={handleChange}
                   required
                   className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
                 >
-
-                  <option value="">
-                    Sélectionner un projet
-                  </option>
-
-                  {projects.map(
-                    (project) => (
-
-                      <option
-                        key={project.id}
-                        value={project.id}
-                      >
-
-                        {project.name}
-
-                        {" — "}
-
-                        {project.team_name}
-
-                      </option>
-
-                    )
-                  )}
-
+                  <option value="">Sélectionner une fonctionnalité</option>
+                  {features.map((feature) => (
+                    <option key={feature.id} value={feature.id}>
+                      {feature.project_name} — {feature.title}
+                    </option>
+                  ))}
                 </select>
-
               </div>
 
 
@@ -1128,31 +1070,15 @@ function Tasks() {
               </div>
 
 
-              {/* DEADLINE */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">
-                  Deadline
-                </label>
-
-                <div className="relative">
-
-                  <CalendarDays
-                    size={17}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#647276]"
-                  />
-
-                  <input
-                    name="deadline"
-                    type="datetime-local"
-                    value={form.deadline}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] py-3 pl-10 pr-4 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
-                  />
-
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="admin-task-start-date" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de début</label>
+                  <input id="admin-task-start-date" name="start_date" type="date" value={form.start_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
                 </div>
-
+                <div>
+                  <label htmlFor="admin-task-end-date" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de fin</label>
+                  <input id="admin-task-end-date" name="end_date" type="date" min={form.start_date || undefined} value={form.end_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                </div>
               </div>
 
 

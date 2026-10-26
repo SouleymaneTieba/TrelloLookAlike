@@ -229,3 +229,137 @@ html[data-theme="dark"] .chat-reaction[aria-pressed="true"] {
 html[data-theme="dark"] .chat-reaction-option:hover {
   background-color: #2b211b;
 }
+
+/* Dark theme inspired by the Orange Digital Center portal. */
+html[data-theme="dark"] {
+  color: #f5f5f5;
+  background: #141414;
+}
+
+html[data-theme="dark"] body {
+  color: #f5f5f5;
+  background: #141414;
+}
+
+html[data-theme="dark"] [class~="bg-[#050A0C]"],
+html[data-theme="dark"] [class~="bg-[#0E171A]"] {
+  background-color: #141414;
+}
+
+html[data-theme="dark"] [class~="bg-[#070D0F]"],
+html[data-theme="dark"] [class~="bg-[#0B1215]"],
+html[data-theme="dark"] [class~="bg-[#0B1315]"] {
+  background-color: #1a1a1a;
+}
+
+html[data-theme="dark"] [class~="bg-[#10191C]"] {
+  background-color: #222222;
+}
+
+html[data-theme="dark"] [class~="bg-[#152400]"],
+html[data-theme="dark"] [class~="bg-[#13231A]"] {
+  background-color: #2b1c12;
+}
+
+html[data-theme="dark"] [class~="bg-[#1D3200]"] {
+  background-color: #3a2416;
+}
+
+html[data-theme="dark"] [class~="bg-[#B6FF00]"] {
+  background-color: #ff7900;
+}
+
+html[data-theme="dark"] .bg-\[\#070D0F\]\/95 {
+  background-color: rgb(26 26 26 / 95%);
+}
+
+html[data-theme="dark"] .bg-\[\#0B1215\]\/90 {
+  background-color: rgb(26 26 26 / 90%);
+}
+
+html[data-theme="dark"] .bg-\[\#B6FF00\]\/8 {
+  background-color: rgb(255 121 0 / 8%);
+}
+
+html[data-theme="dark"] .bg-\[\#B6FF00\]\/3 {
+  background-color: rgb(255 121 0 / 3%);
+}
+
+html[data-theme="dark"] [class~="border-[#1C292D]"],
+html[data-theme="dark"] [class~="border-[#26363A]"] {
+  border-color: #4a4a4a;
+}
+
+html[data-theme="dark"] [class~="border-[#304800]"] {
+  border-color: #99501c;
+}
+
+html[data-theme="dark"] [class~="text-[#F1F5F2]"],
+html[data-theme="dark"] [class~="text-[#DDE7E1]"] {
+  color: #f5f5f5;
+}
+
+html[data-theme="dark"] [class~="text-[#94A3A6]"] {
+  color: #d0d0d0;
+}
+
+html[data-theme="dark"] [class~="text-[#647276]"],
+html[data-theme="dark"] [class~="text-[#47565A]"] {
+  color: #a0a0a0;
+}
+
+html[data-theme="dark"] [class~="text-[#B6FF00]"],
+html[data-theme="dark"] [class~="text-[#C4FF33]"],
+html[data-theme="dark"] [class~="text-[#C4D000]"] {
+  color: #ff7900;
+}
+
+html[data-theme="dark"] [class~="hover\:bg-[#10191C]"]:hover,
+html[data-theme="dark"] [class~="hover\:bg-[#1B292D]"]:hover {
+  background-color: #292929;
+}
+
+html[data-theme="dark"] [class~="hover\:bg-[#C4FF33]"]:hover {
+  background-color: #ff8c1a;
+}
+
+html[data-theme="dark"] [class~="hover\:text-[#C4FF33]"]:hover {
+  color: #ff9d40;
+}
+
+html[data-theme="dark"] [class~="hover\:border-[#304800]"]:hover {
+  border-color: #ff7900;
+}
+
+html[data-theme="dark"] [class~="border-t-[#B6FF00]"] {
+  border-top-color: #ff7900;
+}
+
+html[data-theme="dark"] [class~="focus\:border-[#B6FF00]"]:focus {
+  border-color: #ff7900;
+}
+
+html[data-theme="dark"] .theme-toggle {
+  color: #ff7900;
+}
+
+html[data-theme="dark"] .theme-toggle:hover {
+  background-color: #2b1c12;
+  color: #ff9d40;
+}
+
+html[data-theme="dark"] .chat-reaction:not([aria-pressed="true"]),
+html[data-theme="dark"] .chat-reaction-trigger,
+html[data-theme="dark"] .chat-reaction-picker {
+  background-color: #222222;
+  border-color: #4a4a4a;
+}
+
+html[data-theme="dark"] .chat-reaction[aria-pressed="true"] {
+  background-color: #3a2416;
+  border-color: #99501c;
+}
+
+html[data-theme="dark"] .chat-reaction-option:hover {
+  background-color: #2b1c12;
+}

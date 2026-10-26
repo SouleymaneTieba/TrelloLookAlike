@@ -155,9 +155,9 @@ function Login() {
           DECORATIVE GLOW
       ======================================= */}
 
-      <div className="pointer-events-none absolute -left-20 -top-20 h-[440px] w-[440px] rounded-full bg-[#B6FF00]/8 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -right-16 h-[500px] w-[500px] rounded-full bg-[#B6FF00]/8 blur-3xl" />
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#B6FF00]/3 blur-3xl" />
+      <div className="pointer-events-none absolute -left-20 -top-20 h-[440px] w-[440px] rounded-full bg-[#FF7900]/8 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -right-16 h-[500px] w-[500px] rounded-full bg-[#FF7900]/8 blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FF7900]/3 blur-3xl" />
 
 
       <main className="relative grid w-full max-w-[1500px] overflow-hidden rounded-3xl border border-[#1C292D] bg-[#0B1215] shadow-2xl lg:min-h-[780px] lg:grid-cols-[minmax(0,0.85fr)_minmax(580px,1.15fr)]">
@@ -366,9 +366,9 @@ function Login() {
         </section>
 
         <aside className="relative hidden overflow-hidden border-l border-[#1C292D] bg-[#10191C] p-12 lg:flex lg:flex-col lg:justify-between lg:p-[14%]">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#B6FF00]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-[#B6FF00]/10 blur-3xl" />
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#B6FF00]/5 blur-3xl" />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#FF7900]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-[#FF7900]/10 blur-3xl" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FF7900]/5 blur-3xl" />
 
           <div className="relative">
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#1C292D] bg-[#152400] px-3 py-1.5 text-xs font-medium text-[#B6FF00]">

@@ -4,6 +4,30 @@ from django.db import models
 from apps.projects.models import Project
 
 
+class Feature(models.Model):
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="features",
+    )
+
+    title = models.CharField(max_length=200)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_features",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.project.name}"
+
+
 class Task(models.Model):
 
     class Status(models.TextChoices):
@@ -26,6 +50,12 @@ class Task(models.Model):
         Project,
         on_delete=models.CASCADE,
         related_name="tasks",
+    )
+
+    feature = models.ForeignKey(
+        Feature,
+        on_delete=models.CASCADE,
+        related_name="subtasks",
     )
 
     assigned_to = models.ForeignKey(
@@ -59,6 +89,9 @@ class Task(models.Model):
         null=True,
         blank=True,
     )
+
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
     completed_at = models.DateTimeField(
         null=True,

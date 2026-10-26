@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   AlertCircle,
+  ArrowLeft,
+  Layers3,
   CalendarDays,
+  CheckCircle2,
+  ChevronRight,
   GripVertical,
   ListTodo,
   Pencil,
@@ -11,6 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -19,6 +24,8 @@ import { useAuth } from "../context/AuthContext";
 function Tasks() {
 
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
 
   // ==========================================
@@ -26,10 +33,12 @@ function Tasks() {
   // ==========================================
 
   const [tasks, setTasks] = useState([]);
+  const [features, setFeatures] = useState([]);
+  const [selectedFeatureId, setSelectedFeatureId] = useState(null);
+  const [boardTaskIds, setBoardTaskIds] = useState([]);
 
   const [projects, setProjects] = useState([]);
 
-  const [teams, setTeams] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
@@ -47,6 +56,14 @@ function Tasks() {
 
   const [priorityFilter, setPriorityFilter] =
     useState("ALL");
+
+  const [showCreateFeatureModal, setShowCreateFeatureModal] = useState(false);
+  const [creatingFeature, setCreatingFeature] = useState(false);
+  const [featureError, setFeatureError] = useState("");
+  const [featureForm, setFeatureForm] = useState({
+    title: "",
+    project: "",
+  });
 
 
   // ==========================================
@@ -104,10 +121,11 @@ function Tasks() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    project: "",
+    feature: "",
     assigned_to: "",
     priority: "MEDIUM",
-    deadline: "",
+    start_date: "",
+    end_date: "",
   });
 
 
@@ -126,24 +144,13 @@ function Tasks() {
       return false;
     }
 
-    return teams.some((team) =>
-      team.members?.some(
-        (member) =>
-          member.user === user.id &&
-          member.role === "PROJECT_MANAGER" &&
-          member.is_active
-      )
-    );
+    return projects.some((project) => project.project_manager_ids?.includes(user.id));
 
   }, [
-    teams,
+    projects,
     user,
     isAdmin,
   ]);
-
-
-  const canAssignTasks =
-    isAdmin || isProjectManager;
 
 
   // ==========================================
@@ -158,15 +165,15 @@ function Tasks() {
 
       const [
         tasksResponse,
+        featuresResponse,
         projectsResponse,
-        teamsResponse,
       ] = await Promise.all([
 
         api.get("/tasks/"),
 
-        api.get("/projects/"),
+        api.get("/features/"),
 
-        api.get("/teams/"),
+        api.get("/projects/"),
 
       ]);
 
@@ -175,14 +182,12 @@ function Tasks() {
         tasksResponse.data
       );
 
+      setFeatures(featuresResponse.data);
+
       setProjects(
         projectsResponse.data
       );
 
-      const allTeams =
-        teamsResponse.data;
-
-      setTeams(allTeams);
 
     } catch (error) {
 
@@ -217,41 +222,30 @@ function Tasks() {
   // MEMBRES
   // ==========================================
 
-  const members = useMemo(() => {
+  const selectedFeature = features.find(
+    (feature) => Number(feature.id) === Number(selectedFeatureId)
+  );
 
-    const membersMap = new Map();
+  const selectedFeatureTasks = selectedFeature
+    ? tasks.filter((task) => Number(task.feature) === Number(selectedFeature.id))
+    : [];
 
+  const formFeature = features.find(
+    (feature) => Number(feature.id) === Number(formData.feature)
+  );
 
-    teams.forEach((team) => {
+  const selectedProject = projects.find(
+    (project) => Number(project.id) === Number(selectedFeature?.project || formFeature?.project)
+  );
 
-      team.members?.forEach((member) => {
+  const canAssignTasks =
+    isAdmin || Boolean(selectedProject?.project_manager_ids?.includes(user?.id));
 
-        if (
-          member.is_active &&
-          member.user
-        ) {
+  const formProject = projects.find(
+    (project) => Number(project.id) === Number(formFeature?.project)
+  );
 
-          membersMap.set(
-            member.user,
-            {
-              id: member.user,
-              username: member.username,
-              role: member.role,
-            }
-          );
-
-        }
-
-      });
-
-    });
-
-
-    return Array.from(
-      membersMap.values()
-    );
-
-  }, [teams]);
+  const members = formProject?.member_details || selectedProject?.member_details || [];
 
 
   // ==========================================
@@ -297,6 +291,8 @@ function Tasks() {
 
 
       return (
+        (selectedFeatureId === null || Number(task.feature) === Number(selectedFeatureId)) &&
+        boardTaskIds.includes(Number(task.id)) &&
         matchesSearch &&
         matchesStatus &&
         matchesPriority
@@ -306,6 +302,8 @@ function Tasks() {
 
   }, [
     tasks,
+    selectedFeatureId,
+    boardTaskIds,
     search,
     statusFilter,
     priorityFilter,
@@ -331,6 +329,32 @@ function Tasks() {
 
   };
 
+  const handleCreateFeature = async (event) => {
+    event.preventDefault();
+    setFeatureError("");
+    if (!featureForm.title.trim() || !featureForm.project) {
+      setFeatureError("Le titre et le projet sont obligatoires.");
+      return;
+    }
+    try {
+      setCreatingFeature(true);
+      const response = await api.post("/features/", {
+        title: featureForm.title.trim(),
+        project: Number(featureForm.project),
+      });
+      setFeatures((items) => [response.data, ...items]);
+      setFeatureForm({ title: "", project: "" });
+      setShowCreateFeatureModal(false);
+      setSelectedFeatureId(response.data.id);
+      setBoardTaskIds([]);
+    } catch (error) {
+      const messages = Object.values(error.response?.data || {}).flat().join(" ");
+      setFeatureError(messages || "Impossible de créer la fonctionnalité.");
+    } finally {
+      setCreatingFeature(false);
+    }
+  };
+
 
   // ==========================================
   // CRÉATION
@@ -347,13 +371,14 @@ function Tasks() {
 
       description: "",
 
-      project: "",
+      feature: selectedFeatureId || "",
 
       assigned_to: "",
 
       priority: "MEDIUM",
 
-      deadline: "",
+      start_date: "",
+      end_date: "",
 
     });
 
@@ -394,10 +419,10 @@ function Tasks() {
     }
 
 
-    if (!formData.project) {
+    if (!formData.feature) {
 
       setCreateError(
-        "Veuillez sélectionner un projet."
+        "Sélectionnez une fonctionnalité."
       );
 
       return;
@@ -417,8 +442,8 @@ function Tasks() {
         description:
           formData.description.trim(),
 
-        project:
-          Number(formData.project),
+        feature:
+          Number(formData.feature),
 
         priority:
           formData.priority,
@@ -436,14 +461,8 @@ function Tasks() {
       }
 
 
-      if (formData.deadline) {
-
-        payload.deadline =
-          new Date(
-            formData.deadline
-          ).toISOString();
-
-      }
+      payload.start_date = formData.start_date || null;
+      payload.end_date = formData.end_date || null;
 
 
       const response =
@@ -460,6 +479,7 @@ function Tasks() {
         ...previous,
 
       ]);
+      setBoardTaskIds((previous) => [...new Set([...previous, Number(response.data.id)])]);
 
 
       setShowCreateModal(false);
@@ -471,13 +491,14 @@ function Tasks() {
 
         description: "",
 
-        project: "",
+        feature: selectedFeatureId || "",
 
         assigned_to: "",
 
         priority: "MEDIUM",
 
-        deadline: "",
+        start_date: "",
+        end_date: "",
 
       });
 
@@ -523,7 +544,7 @@ function Tasks() {
   // MODIFICATION
   // ==========================================
 
-  const openEditModal = (task) => {
+  const openEditModal = useCallback((task) => {
 
     setEditingTask(task);
 
@@ -538,8 +559,8 @@ function Tasks() {
       description:
         task.description || "",
 
-      project:
-        task.project || "",
+      feature:
+        task.feature || "",
 
       assigned_to:
         task.assigned_to || "",
@@ -547,19 +568,36 @@ function Tasks() {
       priority:
         task.priority || "MEDIUM",
 
-      deadline:
-        task.deadline
-          ? new Date(task.deadline)
-              .toISOString()
-              .slice(0, 16)
-          : "",
+      start_date: task.start_date || "",
+      end_date: task.end_date || "",
 
     });
 
 
     setShowEditModal(true);
 
-  };
+  }, []);
+
+
+  useEffect(() => {
+    const requestedTaskId = location.state?.openTaskId;
+
+    if (!requestedTaskId || loading) {
+      return;
+    }
+
+    const requestedTask = tasks.find(
+      (task) => Number(task.id) === Number(requestedTaskId)
+    );
+
+    if (requestedTask) {
+      setSelectedFeatureId(requestedTask.feature);
+        setBoardTaskIds([Number(requestedTask.id)]);
+      openEditModal(requestedTask);
+    }
+
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location, loading, navigate, openEditModal, tasks]);
 
 
   const closeEditModal = () => {
@@ -601,10 +639,10 @@ function Tasks() {
     }
 
 
-    if (!formData.project) {
+    if (!formData.feature) {
 
       setEditError(
-        "Veuillez sélectionner un projet."
+        "Cette sous-tâche doit être associée à une fonctionnalité."
       );
 
       return;
@@ -624,8 +662,8 @@ function Tasks() {
         description:
           formData.description.trim(),
 
-        project:
-          Number(formData.project),
+        feature:
+          Number(formData.feature),
 
         priority:
           formData.priority,
@@ -646,18 +684,8 @@ function Tasks() {
       }
 
 
-      if (formData.deadline) {
-
-        payload.deadline =
-          new Date(
-            formData.deadline
-          ).toISOString();
-
-      } else {
-
-        payload.deadline = null;
-
-      }
+      payload.start_date = formData.start_date || null;
+      payload.end_date = formData.end_date || null;
 
 
       const response =
@@ -680,6 +708,10 @@ function Tasks() {
         )
 
       );
+      if (Number(response.data.feature) !== Number(selectedFeatureId)) {
+        setSelectedFeatureId(response.data.feature);
+      }
+      setBoardTaskIds((previous) => [...new Set([...previous, Number(response.data.id)])]);
 
 
       closeEditModal();
@@ -806,6 +838,7 @@ function Tasks() {
 
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", String(task.id));
+    event.dataTransfer.setData("text", String(task.id));
     setDraggedTaskId(task.id);
 
   };
@@ -816,7 +849,7 @@ function Tasks() {
     event.preventDefault();
     setDragOverStatus(null);
 
-    const taskId = event.dataTransfer.getData("text/plain");
+    const taskId = event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text") || String(draggedTaskId || "");
     const task = tasks.find((item) => String(item.id) === taskId);
 
     if (task) {
@@ -850,6 +883,7 @@ function Tasks() {
       setTasks((previous) =>
         previous.filter((item) => item.id !== task.id)
       );
+      setBoardTaskIds((previous) => previous.filter((id) => id !== Number(task.id)));
 
     } catch (error) {
       console.error(error);
@@ -882,9 +916,25 @@ function Tasks() {
       return true;
     }
 
+    const taskProject = projects.find(
+      (project) => Number(project.id) === Number(task.project)
+    );
+    const isTaskProjectManager = taskProject?.project_manager_ids?.some(
+      (managerId) => Number(managerId) === Number(user?.id)
+    );
+    const isTaskProjectMember = taskProject?.members?.some(
+      (memberId) => Number(memberId) === Number(user?.id)
+    ) || taskProject?.member_details?.some(
+      (member) => Number(member.id) === Number(user?.id)
+    );
+
+    if (isTaskProjectManager || isTaskProjectMember) {
+      return true;
+    }
+
     return (
-      task.assigned_to === user?.id ||
-      task.created_by === user?.id
+      Number(task.assigned_to) === Number(user?.id) ||
+      Number(task.created_by) === Number(user?.id)
     );
 
   };
@@ -939,7 +989,7 @@ function Tasks() {
   const formatDate = (date) => {
 
     if (!date) {
-      return "Pas de deadline";
+      return "Pas de date de fin";
     }
 
 
@@ -1006,26 +1056,31 @@ function Tasks() {
           </p>
 
           <h1 className="text-3xl font-semibold text-[#F1F5F2]">
-            Tâches
+            {selectedFeature ? selectedFeature.title : "Fonctionnalités"}
           </h1>
 
           <p className="mt-2 text-[#94A3A6]">
-            Gérez et suivez l'avancement de vos tâches.
+            Consultez les fonctionnalités du projet et leurs sous-tâches.
           </p>
 
         </div>
 
 
-        <button
-          onClick={openCreateModal}
-          className="flex items-center justify-center gap-2 rounded-xl bg-[#B6FF00] px-4 py-3 font-semibold text-black transition hover:bg-[#C4FF33]"
-        >
-
-          <Plus size={19} />
-
-          Nouvelle tâche
-
-        </button>
+        <div className="flex gap-3">
+          {selectedFeature && (
+            <button onClick={() => { setSelectedFeatureId(null); setBoardTaskIds([]); }} className="flex items-center gap-2 rounded-xl border border-[#1C292D] px-4 py-3 text-[#F1F5F2]">
+              <ArrowLeft size={18} /> Fonctionnalités
+            </button>
+          )}
+          {(isAdmin || isProjectManager) && (
+            <button
+              onClick={() => selectedFeature ? openCreateModal() : setShowCreateFeatureModal(true)}
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#B6FF00] px-4 py-3 font-semibold text-black transition hover:bg-[#C4FF33]"
+            >
+              <Plus size={19} /> {selectedFeature ? "Nouvelle sous-tâche" : "Nouvelle fonctionnalité"}
+            </button>
+          )}
+        </div>
 
       </div>
 
@@ -1047,6 +1102,7 @@ function Tasks() {
       )}
 
 
+      <>
       {/* ======================================
           FILTERS
       ======================================= */}
@@ -1148,6 +1204,70 @@ function Tasks() {
       </div>
 
 
+      <section aria-labelledby="task-feature-selector-title" className="mt-4 rounded-2xl border border-[#1C292D] bg-[#0B1215] p-4">
+        <label htmlFor="task-feature-picker" id="task-feature-selector-title" className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#F1F5F2]">
+          <Layers3 size={17} className="text-[#B6FF00]" /> Fonctionnalité
+        </label>
+        {features.length === 0 ? (
+          <p className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#647276]">Aucune fonctionnalité disponible.</p>
+        ) : (
+          <select
+            id="task-feature-picker"
+            value={selectedFeatureId || ""}
+            onChange={(event) => {
+              const featureId = event.target.value ? Number(event.target.value) : null;
+              setSelectedFeatureId(featureId);
+              setBoardTaskIds([]);
+              setStatusFilter("ALL");
+              setPriorityFilter("ALL");
+              setSearch("");
+            }}
+            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
+          >
+            <option value="">Choisir une fonctionnalité</option>
+            {features.map((feature) => (
+              <option key={feature.id} value={feature.id}>
+                {feature.title}{feature.project_name ? ` · ${feature.project_name}` : ""}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <div className="mt-4 border-t border-[#1C292D] pt-4">
+          <label htmlFor="task-feature-task-picker" className="mb-2 block text-xs font-medium text-[#94A3A6]">
+            {selectedFeature ? `Ajouter une tâche de « ${selectedFeature.title} » au tableau` : "Sélectionnez une fonctionnalité pour choisir ses tâches"}
+          </label>
+          <select
+            id="task-feature-task-picker"
+            value=""
+            disabled={!selectedFeature || selectedFeatureTasks.every((task) => boardTaskIds.includes(Number(task.id)))}
+            onChange={(event) => {
+              const taskId = Number(event.target.value);
+              if (taskId) {
+                setBoardTaskIds((previous) => [...new Set([...previous, taskId])]);
+                setSearch("");
+                setStatusFilter("ALL");
+                setPriorityFilter("ALL");
+              }
+            }}
+            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <option value="">
+              {!selectedFeature
+                ? "Choisir d’abord une fonctionnalité"
+                : selectedFeatureTasks.length === 0
+                  ? "Aucune tâche dans cette fonctionnalité"
+                  : selectedFeatureTasks.every((task) => boardTaskIds.includes(Number(task.id)))
+                    ? "Toutes les tâches sont déjà dans le tableau"
+                    : "Choisir une tâche"}
+            </option>
+            {selectedFeatureTasks.filter((task) => !boardTaskIds.includes(Number(task.id))).map((task) => (
+              <option key={task.id} value={task.id}>{task.title} · {getStatusLabel(task.status)}</option>
+            ))}
+          </select>
+        </div>
+      </section>
+
       {/* ======================================
           COUNTER
       ======================================= */}
@@ -1172,7 +1292,7 @@ function Tasks() {
 
         <span className="text-xs text-[#647276]">
 
-          {tasks.length} au total
+            {selectedFeatureTasks.length} dans la fonctionnalité
 
         </span>
 
@@ -1183,7 +1303,7 @@ function Tasks() {
           TABLEAU DES TÂCHES
       ======================================= */}
 
-      {filteredTasks.length === 0 ? (
+      {!selectedFeature ? (
 
         <div className="mt-4 rounded-2xl border border-[#1C292D] bg-[#0B1215] px-6 py-14 text-center">
 
@@ -1198,7 +1318,7 @@ function Tasks() {
 
 
           <h2 className="mt-5 font-semibold text-[#F1F5F2]">
-            Aucune tâche trouvée
+            Sélectionnez une fonctionnalité
           </h2>
 
 
@@ -1210,7 +1330,7 @@ function Tasks() {
 
               ? "Essayez de modifier vos filtres."
 
-              : "Vous n'avez actuellement aucune tâche."}
+              : "Les fonctionnalités apparaîtront ici pour consulter leurs tâches."}
 
           </p>
 
@@ -1266,7 +1386,7 @@ function Tasks() {
 
                   {columnTasks.length === 0 && (
                     <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-[#26363A] px-4 text-center text-sm text-[#647276]">
-                      Déposer une tâche ici
+                      {boardTaskIds.length === 0 ? "Ajoutez une tâche avec le sélecteur ci-dessus" : "Déposer une tâche ici"}
                     </div>
                   )}
 
@@ -1304,6 +1424,15 @@ function Tasks() {
                 key={task.id}
                 draggable={canDrag}
                 onDragStart={(event) => handleTaskDragStart(event, task)}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleTaskDrop(event, column.status);
+                }}
                 onDragEnd={() => {
                   setDraggedTaskId(null);
                   setDragOverStatus(null);
@@ -1423,9 +1552,8 @@ function Tasks() {
 
                           <CalendarDays size={14} />
 
-                          {formatDate(
-                            task.deadline
-                          )}
+                          {task.start_date && <>Début : {formatDate(task.start_date)} · </>}
+                          {formatDate(task.end_date || task.deadline)}
 
                         </span>
 
@@ -1535,6 +1663,26 @@ function Tasks() {
       )}
 
 
+      </>
+
+      {showCreateFeatureModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <form onSubmit={handleCreateFeature} className="w-full max-w-xl space-y-5 rounded-2xl border border-[#1C292D] bg-[#0B1215] p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-[#F1F5F2]">Nouvelle fonctionnalité</h2>
+              <button type="button" onClick={() => setShowCreateFeatureModal(false)} className="rounded-lg p-2 text-[#647276]"><X size={20} /></button>
+            </div>
+            {featureError && <p className="rounded-xl bg-red-950/30 p-3 text-sm text-red-400">{featureError}</p>}
+            <input value={featureForm.title} onChange={(event) => setFeatureForm((form) => ({ ...form, title: event.target.value }))} placeholder="Titre de la fonctionnalité" required className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-white" />
+            <select value={featureForm.project} onChange={(event) => setFeatureForm((form) => ({ ...form, project: event.target.value }))} required className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-white">
+              <option value="">Sélectionner un projet</option>
+              {projects.filter((project) => isAdmin || project.project_manager_ids?.includes(user?.id)).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
+            <button disabled={creatingFeature} className="w-full rounded-xl bg-[#B6FF00] px-4 py-3 font-semibold text-black">{creatingFeature ? "Création…" : "Créer la fonctionnalité"}</button>
+          </form>
+        </div>
+      )}
+
       {/* ======================================
           MODAL CRÉATION
       ======================================= */}
@@ -1567,12 +1715,12 @@ function Tasks() {
               <div>
 
                 <h2 className="text-xl font-semibold text-[#F1F5F2]">
-                  Nouvelle tâche
+                  Nouvelle sous-tâche
                 </h2>
 
 
                 <p className="mt-1 text-sm text-[#647276]">
-                  Ajoutez une tâche à votre projet.
+                  Ajoutez une sous-tâche à cette fonctionnalité.
                 </p>
 
               </div>
@@ -1658,42 +1806,10 @@ function Tasks() {
 
 
                 <div>
-
-                  <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">
-                    Projet
-                  </label>
-
-
-                  <select
-                    name="project"
-                    value={formData.project}
-                    onChange={handleChange}
-                    required
-                    className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
-                  >
-
-                    <option value="">
-                      Sélectionner un projet
-                    </option>
-
-
-                    {projects.map(
-                      (project) => (
-
-                        <option
-                          key={project.id}
-                          value={project.id}
-                        >
-
-                          {project.name}
-
-                        </option>
-
-                      )
-                    )}
-
-                  </select>
-
+                  <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Fonctionnalité</label>
+                  <div className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#94A3A6]">
+                    {formFeature?.title || selectedFeature?.title || "Aucune fonctionnalité sélectionnée"}
+                  </div>
                 </div>
 
 
@@ -1792,21 +1908,15 @@ function Tasks() {
                 </div>
 
 
-                <div>
-
-                  <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">
-                    Deadline
-                  </label>
-
-
-                  <input
-                    name="deadline"
-                    type="datetime-local"
-                    value={formData.deadline}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none placeholder:text-[#647276] focus:border-[#B6FF00]"
-                  />
-
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de début</label>
+                    <input name="start_date" type="date" value={formData.start_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de fin</label>
+                    <input name="end_date" type="date" min={formData.start_date || undefined} value={formData.end_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                  </div>
                 </div>
 
               </div>
@@ -1973,42 +2083,10 @@ function Tasks() {
 
 
                 <div>
-
-                  <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">
-                    Projet
-                  </label>
-
-
-                  <select
-                    name="project"
-                    value={formData.project}
-                    onChange={handleChange}
-                    required
-                    className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
-                  >
-
-                    <option value="">
-                      Sélectionner un projet
-                    </option>
-
-
-                    {projects.map(
-                      (project) => (
-
-                        <option
-                          key={project.id}
-                          value={project.id}
-                        >
-
-                          {project.name}
-
-                        </option>
-
-                      )
-                    )}
-
-                  </select>
-
+                  <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Fonctionnalité</label>
+                  <div className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#94A3A6]">
+                    {formFeature?.title || selectedFeature?.title || "Aucune fonctionnalité sélectionnée"}
+                  </div>
                 </div>
 
 
@@ -2104,21 +2182,15 @@ function Tasks() {
                 </div>
 
 
-                <div>
-
-                  <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">
-                    Deadline
-                  </label>
-
-
-                  <input
-                    name="deadline"
-                    type="datetime-local"
-                    value={formData.deadline}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
-                  />
-
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de début</label>
+                    <input name="start_date" type="date" value={formData.start_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de fin</label>
+                    <input name="end_date" type="date" min={formData.start_date || undefined} value={formData.end_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                  </div>
                 </div>
 
               </div>

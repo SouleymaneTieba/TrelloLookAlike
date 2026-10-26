@@ -1,7 +1,36 @@
 from django.conf import settings
 from django.db import models
 
-from apps.teams.models import Team
+class ProjectMemberRole(models.Model):
+
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        related_name="member_roles",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_role_assignments",
+    )
+    role = models.ForeignKey(
+        "teams.Role",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="project_assignments",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "user"],
+                name="unique_project_member_role",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.project.name}"
 
 
 class Project(models.Model):
@@ -16,10 +45,10 @@ class Project(models.Model):
 
     description = models.TextField(blank=True)
 
-    team = models.ForeignKey(
-        Team,
-        on_delete=models.CASCADE,
-        related_name="projects",
+    members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="project_memberships",
     )
 
     created_by = models.ForeignKey(
@@ -32,7 +61,7 @@ class Project(models.Model):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.PLANNED,
+        default=Status.IN_PROGRESS,
     )
 
     start_date = models.DateField(null=True, blank=True)

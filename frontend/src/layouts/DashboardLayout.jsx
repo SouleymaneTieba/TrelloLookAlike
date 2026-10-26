@@ -1,19 +1,16 @@
 import {
   Bell,
-  CheckSquare,
   FolderKanban,
   LayoutDashboard,
   LogOut,
   MessageCircle,
   ShieldCheck,
-  Users,
   UserCog,
 } from "lucide-react";
 
 import {
   NavLink,
   Outlet,
-  useLocation,
 } from "react-router-dom";
 
 import {
@@ -31,9 +28,6 @@ import ThemeToggle from "../components/ThemeToggle";
 
 
 function DashboardLayout() {
-
-  const location =
-    useLocation();
 
   const {
     user,
@@ -305,12 +299,6 @@ function DashboardLayout() {
     isAdmin
       ? adminNavigation
       : memberNavigation;
-
-  const isTeamProjectSection =
-    ["/teams", "/projects", "/tasks"].includes(
-      location.pathname
-    );
-
 
   // ==================================================
   // CLIQUER SUR LA CLOCHE
@@ -631,44 +619,6 @@ function DashboardLayout() {
         ================================================== */}
 
         <main className="p-8">
-
-          {isTeamProjectSection && (
-
-            <nav
-              className="mb-8 flex flex-wrap gap-2"
-              aria-label="Navigation équipes et projets"
-            >
-
-              {[
-                { name: "Équipes", path: "/teams", icon: Users },
-                { name: "Projets", path: "/projects", icon: FolderKanban },
-                { name: "Tâches", path: "/tasks", icon: CheckSquare },
-              ].map((item) => {
-                const Icon = item.icon;
-
-                return (
-
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    className={({ isActive }) =>
-                      `inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
-                        isActive
-                          ? "border-[#304800] bg-[#152400] text-[#B6FF00]"
-                          : "border-[#1C292D] bg-[#0B1215] text-[#94A3A6] hover:border-[#304800] hover:text-white"
-                      }`
-                    }
-                  >
-                    <Icon size={17} />
-                    {item.name}
-                  </NavLink>
-
-                );
-              })}
-
-            </nav>
-
-          )}
 
           <Outlet />
 

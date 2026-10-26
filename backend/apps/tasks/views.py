@@ -5,22 +5,44 @@ from rest_framework import permissions, viewsets
 
 from apps.notifications.models import Notification
 from apps.notifications.services import NotificationService
+from apps.projects.models import Project
 from apps.teams.models import TeamMember
 
 from .models import (
+    Feature,
     Task,
     TaskAvailabilityReport,
 )
 
 from .permissions import (
     AvailabilityPermission,
+    FeaturePermission,
     TaskPermission,
 )
 
 from .serializers import (
+    FeatureSerializer,
     TaskAvailabilityReportSerializer,
     TaskSerializer,
 )
+
+
+class FeatureViewSet(viewsets.ModelViewSet):
+
+    serializer_class = FeatureSerializer
+    permission_classes = [FeaturePermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Feature.objects.select_related("project", "created_by").prefetch_related("subtasks")
+
+        if user.is_staff or user.is_superuser:
+            return queryset.all().order_by("-created_at")
+
+        return queryset.filter(project__members=user).distinct().order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -43,7 +65,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             Task.objects
             .select_related(
                 "project",
-                "project__team",
+                "feature",
                 "assigned_to",
                 "created_by",
             )
@@ -65,26 +87,24 @@ class TaskViewSet(viewsets.ModelViewSet):
             )
 
         # ==================================================
-        # CHEF DE PROJET
+        # CHEF DE PROJET / MEMBRE
         # ==================================================
 
-        is_project_manager = (
-            user.team_memberships
-            .filter(
-                role__slug="PROJECT_MANAGER",
-                is_active=True,
-            )
-            .exists()
-        )
+        managed_project_ids = Project.objects.filter(
+            member_roles__user=user,
+            member_roles__role__slug="PROJECT_MANAGER",
+        ).values_list("id", flat=True).distinct()
 
-        if is_project_manager:
+        if managed_project_ids.exists():
 
             return (
                 base_queryset
                 .filter(
-                    project__team__members__user=user,
-                    project__team__members__role__slug="PROJECT_MANAGER",
-                    project__team__members__is_active=True,
+                    models.Q(project_id__in=managed_project_ids)
+                    | (
+                        models.Q(project__members=user)
+                        & (models.Q(assigned_to=user) | models.Q(created_by=user))
+                    )
                 )
                 .distinct()
                 .order_by("-created_at")
@@ -96,14 +116,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
         return (
             base_queryset
-            .filter(
-                project__team__members__user=user,
-                project__team__members__is_active=True,
-            )
-            .filter(
-                models.Q(assigned_to=user)
-                | models.Q(created_by=user)
-            )
+            .filter(project__members=user)
             .distinct()
             .order_by("-created_at")
         )
@@ -291,10 +304,10 @@ class TaskAvailabilityReportViewSet(
             .values_list("user_id", "team_id")
         )
         active_memberships = set(memberships)
-        assigned_task_pairs = set(
+        users_with_open_tasks = set(
             Task.objects.exclude(status=Task.Status.DONE)
             .filter(assigned_to__isnull=False)
-            .values_list("assigned_to_id", "project__team_id")
+            .values_list("assigned_to_id", flat=True)
             .distinct()
         )
 
@@ -313,7 +326,7 @@ class TaskAvailabilityReportViewSet(
 
         for user_id, team_id in memberships:
             pair = (user_id, team_id)
-            has_open_task = pair in assigned_task_pairs
+            has_open_task = user_id in users_with_open_tasks
             report = automatic_reports.get(pair)
 
             if report is None:

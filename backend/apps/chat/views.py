@@ -37,7 +37,7 @@ class MessageViewSet(viewsets.ModelViewSet):
                 Message.objects
                 .select_related(
                     "user",
-                    "team",
+                    "project",
                 )
                 .prefetch_related("reactions")
                 .all()
@@ -54,12 +54,11 @@ class MessageViewSet(viewsets.ModelViewSet):
             Message.objects
             .select_related(
                 "user",
-                "team",
+                "project",
             )
             .prefetch_related("reactions")
             .filter(
-                team__members__user=user,
-                team__members__is_active=True,
+                project__members=user,
             )
             .distinct()
             .order_by(
@@ -69,7 +68,7 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
 
-        team = serializer.validated_data["team"]
+        project = serializer.validated_data["project"]
 
         user = self.request.user
 
@@ -77,23 +76,17 @@ class MessageViewSet(viewsets.ModelViewSet):
         # VÉRIFIER L'APPARTENANCE
         # ==========================================
 
-        is_member = (
-            team.members
-            .filter(
-                user=user,
-                is_active=True,
-            )
-            .exists()
-        )
+        is_admin = user.is_staff or user.is_superuser
+        is_member = project.members.filter(id=user.id).exists()
 
-        if not is_member:
+        if not (is_admin or is_member):
 
             from rest_framework.exceptions import (
                 PermissionDenied
             )
 
             raise PermissionDenied(
-                "Vous n'appartenez pas à cette équipe."
+                "Vous ne faites pas partie de ce projet."
             )
 
         # ==========================================
@@ -103,6 +96,13 @@ class MessageViewSet(viewsets.ModelViewSet):
         serializer.save(
             user=user
         )
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        project_id = self.request.query_params.get("project")
+        if project_id:
+            queryset = queryset.filter(project_id=project_id)
+        return queryset
 
     @action(detail=True, methods=["post"])
     def react(self, request, pk=None):
@@ -125,7 +125,7 @@ class MessageViewSet(viewsets.ModelViewSet):
             "reactions": reactions,
         }
         async_to_sync(get_channel_layer().group_send)(
-            f"chat_team_{message.team_id}",
+            f"chat_project_{message.project_id}",
             event,
         )
 

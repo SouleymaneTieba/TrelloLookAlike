@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.users.presence import is_user_online
+
 from .models import Role, Team, TeamMember
 
 
@@ -89,6 +91,11 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    avatar = serializers.CharField(
+        source="user.avatar",
+        read_only=True,
+    )
+
     job_title = serializers.CharField(
         source="user.job_title",
         read_only=True,
@@ -109,6 +116,8 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    is_online = serializers.SerializerMethodField()
+
     class Meta:
 
         model = TeamMember
@@ -120,11 +129,13 @@ class TeamMemberSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
+            "avatar",
             "job_title",
             "team",
             "team_name",
             "role",
             "role_label",
+            "is_online",
             "joined_at",
             "is_active",
         ]
@@ -134,6 +145,7 @@ class TeamMemberSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
+            "avatar",
             "job_title",
             "team_name",
             "role_label",
@@ -206,6 +218,9 @@ class TeamMemberSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
+
+    def get_is_online(self, obj):
+        return is_user_online(obj.user_id)
 
     def create(self, validated_data):
 

@@ -1,9 +1,75 @@
 from rest_framework import serializers
 
+from apps.projects.permissions import user_is_project_manager
+
 from .models import (
+    Feature,
     Task,
     TaskAvailabilityReport,
 )
+
+
+class FeatureSerializer(serializers.ModelSerializer):
+
+    project_name = serializers.CharField(source="project.name", read_only=True)
+    created_by_username = serializers.CharField(
+        source="created_by.username",
+        read_only=True,
+        allow_null=True,
+    )
+    subtask_count = serializers.SerializerMethodField()
+    completed_subtask_count = serializers.SerializerMethodField()
+    progress = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Feature
+        fields = [
+            "id",
+            "project",
+            "project_name",
+            "title",
+            "created_by",
+            "created_by_username",
+            "subtask_count",
+            "completed_subtask_count",
+            "progress",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "created_by",
+            "created_by_username",
+            "project_name",
+            "subtask_count",
+            "completed_subtask_count",
+            "progress",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        project = attrs.get("project", getattr(self.instance, "project", None))
+        if request and project:
+            is_admin = request.user.is_staff or request.user.is_superuser
+            if not is_admin and not user_is_project_manager(project, request.user):
+                raise serializers.ValidationError({
+                    "project": "Seul le chef de projet peut créer ou modifier une fonctionnalité."
+                })
+        return attrs
+
+    def get_subtask_count(self, obj):
+        return obj.subtasks.count()
+
+    def get_completed_subtask_count(self, obj):
+        return obj.subtasks.filter(status=Task.Status.DONE).count()
+
+    def get_progress(self, obj):
+        total = obj.subtasks.count()
+        if not total:
+            return 0
+        completed = obj.subtasks.filter(status=Task.Status.DONE).count()
+        return round(completed * 100 / total)
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -23,8 +89,8 @@ class TaskSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
-    team_name = serializers.CharField(
-        source="project.team.name",
+    feature_title = serializers.CharField(
+        source="feature.title",
         read_only=True,
     )
 
@@ -50,7 +116,8 @@ class TaskSerializer(serializers.ModelSerializer):
             "project",
             "project_name",
 
-            "team_name",
+            "feature",
+            "feature_title",
 
             "assigned_to",
             "assigned_username",
@@ -65,6 +132,8 @@ class TaskSerializer(serializers.ModelSerializer):
             "priority_label",
 
             "deadline",
+            "start_date",
+            "end_date",
             "completed_at",
 
             "created_at",
@@ -72,11 +141,12 @@ class TaskSerializer(serializers.ModelSerializer):
         ]
 
         read_only_fields = [
+            "project",
             "created_by",
             "created_by_username",
             "assigned_username",
             "project_name",
-            "team_name",
+            "feature_title",
             "status_label",
             "priority_label",
             "completed_at",
@@ -101,14 +171,12 @@ class TaskSerializer(serializers.ModelSerializer):
         # RÉCUPÉRER LES DONNÉES
         # ==========================================
 
-        project = attrs.get(
-            "project",
-            getattr(
-                self.instance,
-                "project",
-                None,
-            ),
+        feature = attrs.get(
+            "feature",
+            getattr(self.instance, "feature", None),
         )
+
+        project = feature.project if feature else None
 
         assigned_to = attrs.get(
             "assigned_to",
@@ -128,6 +196,20 @@ class TaskSerializer(serializers.ModelSerializer):
             ),
         )
 
+        start_date = attrs.get(
+            "start_date",
+            getattr(self.instance, "start_date", None),
+        )
+        end_date = attrs.get(
+            "end_date",
+            getattr(self.instance, "end_date", None),
+        )
+
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({
+                "end_date": "La date de fin doit être postérieure ou égale à la date de début."
+            })
+
         # ==========================================
         # ADMIN ?
         # ==========================================
@@ -144,47 +226,41 @@ class TaskSerializer(serializers.ModelSerializer):
         if not project:
 
             raise serializers.ValidationError({
-                "project":
-                    "Un projet est obligatoire."
+                "feature": "Une fonctionnalité est obligatoire pour cette sous-tâche."
+            })
+
+        if self.instance and project.id != self.instance.project_id:
+            raise serializers.ValidationError({
+                "feature": "Une sous-tâche doit rester dans le même projet."
             })
 
         # ==========================================
-        # UTILISATEUR MEMBRE DE L'ÉQUIPE ?
+        # UTILISATEUR MEMBRE DU PROJET ?
         # ==========================================
 
-        is_team_member = (
-            project.team.members
-            .filter(
-                user=user,
-                is_active=True,
-            )
-            .exists()
-        )
+        is_project_manager = user_is_project_manager(project, user)
+        is_project_member = project.members.filter(id=user.id).exists()
 
         if (
             not is_admin
-            and not is_team_member
+            and not (is_project_member or is_project_manager)
         ):
 
             raise serializers.ValidationError({
-                "project":
-                    "Vous n'appartenez pas à l'équipe "
-                    "de ce projet."
+                "feature":
+                    "Vous ne faites pas partie de ce projet."
             })
+
+        if not self.instance and not (is_admin or is_project_manager):
+            raise serializers.ValidationError({
+                "feature": "Seul le chef de projet peut créer des sous-tâches."
+            })
+
+        attrs["project"] = project
 
         # ==========================================
         # CHEF DE PROJET ?
         # ==========================================
-
-        is_project_manager = (
-            project.team.members
-            .filter(
-                user=user,
-                role__slug="PROJECT_MANAGER",
-                is_active=True,
-            )
-            .exists()
-        )
 
         # ==========================================
         # ASSIGNATION
@@ -194,16 +270,12 @@ class TaskSerializer(serializers.ModelSerializer):
 
             # --------------------------------------
             # La personne assignée doit appartenir
-            # à l'équipe du projet
+            # au projet
             # --------------------------------------
 
             assigned_user_is_member = (
-                project.team.members
-                .filter(
-                    user=assigned_to,
-                    is_active=True,
-                )
-                .exists()
+                project.members.filter(id=assigned_to.id).exists()
+                or user_is_project_manager(project, assigned_to)
             )
 
             if not assigned_user_is_member:
@@ -211,7 +283,7 @@ class TaskSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "assigned_to":
                         "Cet utilisateur ne fait pas "
-                        "partie de l'équipe du projet."
+                        "partie du projet."
                 })
 
             # --------------------------------------
@@ -252,12 +324,8 @@ class TaskSerializer(serializers.ModelSerializer):
         if assigned_to:
 
             assigned_user_is_member = (
-                project.team.members
-                .filter(
-                    user=assigned_to,
-                    is_active=True,
-                )
-                .exists()
+                project.members.filter(id=assigned_to.id).exists()
+                or user_is_project_manager(project, assigned_to)
             )
 
             if not assigned_user_is_member:
@@ -265,7 +333,7 @@ class TaskSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "assigned_to":
                         "Cet utilisateur ne fait pas "
-                        "partie de l'équipe du projet."
+                        "partie du projet."
                 })
         # ==========================================
         # DEADLINE

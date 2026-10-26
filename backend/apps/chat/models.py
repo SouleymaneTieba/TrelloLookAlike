@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from apps.projects.models import Project
 from apps.teams.models import Team
 
 
@@ -10,6 +11,16 @@ class Message(models.Model):
         Team,
         on_delete=models.CASCADE,
         related_name="chat_messages",
+        null=True,
+        blank=True,
+    )
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+        null=True,
+        blank=True,
     )
 
     user = models.ForeignKey(
@@ -38,7 +49,7 @@ class Message(models.Model):
 
         return (
             f"{self.user.username} - "
-            f"{self.team.name}"
+            f"{self.project.name if self.project_id else self.team.name if self.team_id else 'Chat'}"
         )
 
 

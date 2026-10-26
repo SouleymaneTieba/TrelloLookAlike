@@ -1,6 +1,13 @@
 from rest_framework import permissions
 
 
+def user_is_project_manager(project, user):
+    return project.member_roles.filter(
+        user_id=user.id,
+        role__slug="PROJECT_MANAGER",
+    ).exists()
+
+
 class ProjectPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
@@ -46,6 +53,9 @@ class ProjectPermission(permissions.BasePermission):
 
         if request.method in permissions.SAFE_METHODS:
             return True
+
+        if getattr(view, "action", None) == "members":
+            return user_is_project_manager(obj, user)
 
         # ==========================================
         # MODIFICATION / SUPPRESSION

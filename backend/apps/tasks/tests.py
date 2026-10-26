@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from django.test import TestCase
 
 from apps.projects.models import Project
-from apps.tasks.models import Task
+from apps.tasks.models import Feature, Task
 from apps.tasks.permissions import TaskPermission
 from apps.teams.models import Role, Team, TeamMember
 from apps.users.models import User
@@ -12,14 +12,11 @@ from apps.users.models import User
 class TaskPermissionTests(TestCase):
 
 	def setUp(self):
-		self.member_role = Role.objects.create(
-			slug="MEMBER",
-			label="Membre",
+		self.manager_role = Role.objects.create(
+			slug="PROJECT_MANAGER",
+			label="Chef de projet",
 		)
-
-		self.team = Team.objects.create(
-			name="Équipe Alpha",
-		)
+		self.team = Team.objects.create(name="Équipe Alpha")
 
 		self.assignee = User.objects.create_user(
 			username="member",
@@ -32,22 +29,12 @@ class TaskPermissionTests(TestCase):
 			password="secret123",
 		)
 
-		TeamMember.objects.create(
-			user=self.assignee,
-			team=self.team,
-			role=self.member_role,
-		)
-		TeamMember.objects.create(
-			user=self.creator,
-			team=self.team,
-			role=self.member_role,
-		)
-
 		self.project = Project.objects.create(
 			name="Projet test",
-			team=self.team,
 			created_by=self.creator,
 		)
+		self.project.members.add(self.assignee, self.creator)
+		self.feature = Feature.objects.create(project=self.project, title="Fonctionnalité test", created_by=self.creator)
 
 	def build_request(self, user, method, data=None):
 		data = data or {}
@@ -62,6 +49,7 @@ class TaskPermissionTests(TestCase):
 			title="Tâche assignée",
 			description="À compléter",
 			project=self.project,
+			feature=self.feature,
 			assigned_to=self.assignee,
 			created_by=self.creator,
 			status=Task.Status.TODO,
@@ -98,6 +86,7 @@ class TaskPermissionTests(TestCase):
 			title="Tâche créée par moi",
 			description="À modifier",
 			project=self.project,
+			feature=self.feature,
 			assigned_to=self.assignee,
 			created_by=self.assignee,
 			status=Task.Status.TODO,
@@ -130,13 +119,13 @@ class TaskPermissionTests(TestCase):
 		TeamMember.objects.create(
 			user=manager,
 			team=self.team,
-			role=Role.objects.get(
-				slug="PROJECT_MANAGER",
-			),
+			role=self.manager_role,
 		)
+		self.project.members.add(manager)
 		task = Task.objects.create(
 			title="Tâche assignée par l'admin",
 			project=self.project,
+			feature=self.feature,
 			assigned_to=manager,
 			created_by=self.creator,
 		)

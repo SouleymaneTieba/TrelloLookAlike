@@ -1,7 +1,7 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from apps.teams.models import Team, TeamMember
+from apps.projects.models import Project
 
 from .models import Message
 
@@ -10,12 +10,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def connect(self):
 
-        self.team_id = self.scope["url_route"]["kwargs"][
-            "team_id"
+        self.project_id = self.scope["url_route"]["kwargs"][
+            "project_id"
         ]
 
         self.room_group_name = (
-            f"chat_team_{self.team_id}"
+            f"chat_project_{self.project_id}"
         )
 
         self.user = self.scope["user"]
@@ -36,11 +36,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return
 
         # ==========================================
-        # VÉRIFIER L'ÉQUIPE
+        # VÉRIFIER L'APPARTENANCE AU PROJET
         # ==========================================
 
-        is_allowed = await self.user_can_access_team(
-            self.team_id
+        is_allowed = await self.user_can_access_project(
+            self.project_id
         )
 
         if not is_allowed:
@@ -96,7 +96,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # ==========================================
 
         message = await self.create_message(
-            team_id=self.team_id,
+            project_id=self.project_id,
             user=self.user,
             content=message_content,
         )
@@ -114,7 +114,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
                 "message": {
                     "id": message["id"],
-                    "team": message["team"],
+                    "project": message["project"],
                     "user": message["user"],
                     "username": message["username"],
                     "first_name": message["first_name"],
@@ -151,9 +151,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     # ==================================================
 
     @database_sync_to_async
-    def user_can_access_team(
+    def user_can_access_project(
         self,
-        team_id,
+        project_id,
     ):
 
         if (
@@ -161,33 +161,32 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             or self.user.is_superuser
         ):
 
-            return Team.objects.filter(
-                id=team_id
+            return Project.objects.filter(
+                id=project_id
             ).exists()
 
-        return TeamMember.objects.filter(
-            team_id=team_id,
-            user=self.user,
-            is_active=True,
+        return Project.objects.filter(
+            id=project_id,
+            members=self.user,
         ).exists()
 
     @database_sync_to_async
     def create_message(
         self,
-        team_id,
+        project_id,
         user,
         content,
     ):
 
         message = Message.objects.create(
-            team_id=team_id,
+            project_id=project_id,
             user=user,
             content=content,
         )
 
         return {
             "id": message.id,
-            "team": message.team_id,
+            "project": message.project_id,
             "user": message.user_id,
             "username": message.user.username,
             "first_name": message.user.first_name,

@@ -7,12 +7,11 @@ from .models import Project
 class ProjectAdmin(admin.ModelAdmin):
     list_display = (
         "name",
-        "team",
         "status",
         "created_by",
         "start_date",
         "end_date",
     )
 
-    list_filter = ("status", "team")
+    list_filter = ("status",)
     search_fields = ("name", "description")

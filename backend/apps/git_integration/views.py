@@ -116,7 +116,6 @@ def github_webhook(request):
             GitRepository.objects
             .select_related(
                 "project",
-                "project__team",
             )
             .get(
                 owner=owner,
@@ -228,13 +227,22 @@ def github_webhook(request):
 # TRAITEMENT PUSH
 # ======================================================
 
+def notify_project_members(project, title, message, link):
+    for member in project.members.all():
+        NotificationService.create(
+            user=member,
+            notification_type=Notification.NotificationType.SYSTEM,
+            title=title,
+            message=message,
+            link=link,
+        )
+
 def handle_push(
     payload,
     git_repository,
 ):
 
     project = git_repository.project
-    team = project.team
 
     # ==================================================
     # BRANCHE
@@ -316,23 +324,11 @@ def handle_push(
     # NOTIFICATION
     # ==================================================
 
-    NotificationService.create_for_team_members(
-
-        team=team,
-
-        notification_type=(
-            Notification.NotificationType.SYSTEM
-        ),
-
-        title=(
-            f"Nouveau push — "
-            f"{git_repository.name}"
-        ),
-
+    notify_project_members(
+        project,
+        title=f"Nouveau push — {git_repository.name}",
         message=message,
-
         link=repository_url,
-
     )
 
     # ==================================================
@@ -407,7 +403,6 @@ def handle_pull_request(
 ):
 
     project = git_repository.project
-    team = project.team
 
     # ==================================================
     # DONNÉES PULL REQUEST
@@ -572,20 +567,11 @@ def handle_pull_request(
     # NOTIFICATION
     # ==================================================
 
-    NotificationService.create_for_team_members(
-
-        team=team,
-
-        notification_type=(
-            Notification.NotificationType.SYSTEM
-        ),
-
+    notify_project_members(
+        project,
         title=notification_title,
-
         message=message,
-
         link=html_url,
-
     )
 
     # ==================================================

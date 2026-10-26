@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
 
 import {
+  ArrowLeft,
   CalendarDays,
   CheckCircle2,
   Clock3,
   FolderKanban,
-  X,
+  Layers3,
+  ListTodo,
   Users,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import api from "../services/api";
 
 
 function Projects() {
 
-  const [projects, setProjects] =
-    useState([]);
+  const navigate = useNavigate();
 
-  const [teams, setTeams] =
+  const [projects, setProjects] =
     useState([]);
 
   const [loading, setLoading] =
@@ -28,6 +30,12 @@ function Projects() {
 
   const [selectedProject, setSelectedProject] =
     useState(null);
+
+  const [projectTasks, setProjectTasks] = useState([]);
+  const [projectFeatures, setProjectFeatures] = useState([]);
+  const [selectedFeature, setSelectedFeature] = useState(null);
+  const [loadingProjectTasks, setLoadingProjectTasks] = useState(false);
+  const [projectTasksError, setProjectTasksError] = useState("");
 
 
   // ==========================================
@@ -41,17 +49,10 @@ function Projects() {
       setLoading(true);
       setError("");
 
-      const [projectsResponse, teamsResponse] = await Promise.all([
-        api.get("/projects/"),
-        api.get("/teams/"),
-      ]);
+      const projectsResponse = await api.get("/projects/");
 
       setProjects(
         projectsResponse.data
-      );
-
-      setTeams(
-        teamsResponse.data
       );
 
     } catch (error) {
@@ -79,32 +80,45 @@ function Projects() {
 
 
   useEffect(() => {
+    const selectedProjectId = selectedProject?.id;
 
-    if (!selectedProject) {
-      return undefined;
+    if (!selectedProjectId) {
+      setProjectTasks([]);
+      setProjectFeatures([]);
+      setSelectedFeature(null);
+      setProjectTasksError("");
+      return;
     }
 
-    const handleEscape = (event) => {
+    let isMounted = true;
+    setSelectedFeature(null);
+    setLoadingProjectTasks(true);
+    setProjectTasksError("");
 
-      if (event.key === "Escape") {
-        setSelectedProject(null);
-      }
-
-    };
-
-    document.addEventListener("keydown", handleEscape);
+    Promise.all([api.get("/tasks/"), api.get("/features/")])
+      .then(([tasksResponse, featuresResponse]) => {
+        if (isMounted) {
+          setProjectTasks(tasksResponse.data.filter((task) => Number(task.project) === Number(selectedProjectId)));
+          setProjectFeatures(featuresResponse.data.filter((feature) => Number(feature.project) === Number(selectedProjectId)));
+          setSelectedFeature(null);
+        }
+      })
+      .catch((requestError) => {
+        console.error(requestError);
+        if (isMounted) {
+          setProjectTasksError("Impossible de récupérer les tâches de ce projet.");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoadingProjectTasks(false);
+        }
+      });
 
     return () => {
-      document.removeEventListener("keydown", handleEscape);
+      isMounted = false;
     };
-
-  }, [selectedProject]);
-
-  const selectedProjectTeam = selectedProject
-    ? teams.find((team) => Number(team.id) === Number(selectedProject.team))
-    : null;
-
-  const associatedMembers = selectedProjectTeam?.members || [];
+  }, [selectedProject?.id]);
 
 
   // ==========================================
@@ -202,11 +216,13 @@ function Projects() {
         </p>
 
         <h1 className="text-3xl font-semibold text-[#F1F5F2]">
-          Projets
+          {selectedProject ? "Détails du projet" : "Projets"}
         </h1>
 
         <p className="mt-2 text-[#94A3A6]">
-          Consultez les projets auxquels vous participez.
+          {selectedProject
+            ? "Consultez la progression, les tâches et les membres du projet."
+            : "Consultez les projets auxquels vous participez."}
         </p>
 
       </div>
@@ -231,7 +247,7 @@ function Projects() {
           STATS
       ======================================= */}
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-3">
+          <div className={`mt-8 grid gap-5 sm:grid-cols-3 ${selectedProject ? "hidden" : ""}`}>
 
 
         {/* TOTAL */}
@@ -332,7 +348,7 @@ function Projects() {
           PROJECTS
       ======================================= */}
 
-      <div className="mt-8">
+      <div className={`mt-8 ${selectedProject ? "hidden" : ""}`}>
 
         <div className="mb-4 flex items-center justify-between">
 
@@ -403,7 +419,6 @@ function Projects() {
                   <button
                     type="button"
                     key={project.id}
-                    aria-haspopup="dialog"
                     className="group w-full cursor-pointer rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 text-left transition hover:-translate-y-0.5 hover:border-[#304800] focus:outline-none focus:ring-2 focus:ring-[#B6FF00]"
                     onClick={() => setSelectedProject(project)}
                   >
@@ -470,7 +485,7 @@ function Projects() {
                       />
 
                       <span>
-                        {project.team_name}
+                        {project.members?.length || 0} membre(s)
                       </span>
 
                     </div>
@@ -596,187 +611,157 @@ function Projects() {
       </div>
 
       {selectedProject && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          role="presentation"
-          onClick={() => setSelectedProject(null)}
-        >
-          <section
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#26363A] bg-[#10191C] p-5 shadow-2xl sm:p-8"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="project-details-title"
-            onClick={(event) => event.stopPropagation()}
+        <div className="mt-8">
+          <button
+            type="button"
+            onClick={() => setSelectedProject(null)}
+            className="mb-6 inline-flex items-center gap-2 rounded-xl border border-[#1C292D] px-3 py-2 text-sm font-medium text-[#94A3A6] transition hover:bg-[#10191C] hover:text-white"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 items-start gap-3">
+            <ArrowLeft size={16} /> Retour aux projets
+          </button>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <section className="min-w-0 rounded-3xl border border-[#26363A] bg-[#10191C] p-5 shadow-2xl sm:p-8 lg:col-span-2" aria-labelledby="project-details-title">
+              <div className="flex items-start gap-3">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-100">
                   <FolderKanban size={20} className="text-[#B6FF00]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">
-                    Détails du projet
-                  </p>
-                  <h2 id="project-details-title" className="mt-1 break-words text-2xl font-semibold text-[#F1F5F2] sm:text-3xl">
-                    {selectedProject.name}
-                  </h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Détails du projet</p>
+                  <h2 id="project-details-title" className="mt-1 break-words text-2xl font-semibold text-[#F1F5F2] sm:text-3xl">{selectedProject.name}</h2>
                 </div>
               </div>
 
-              <button
-                type="button"
-                aria-label="Fermer les détails du projet"
-                className="shrink-0 rounded-xl p-2 text-[#94A3A6] transition hover:bg-[#FFF3EB] hover:text-orange-700"
-                onClick={() => setSelectedProject(null)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-[#1C292D] pb-5">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${getStatusStyle(
-                  selectedProject.status
-                )}`}
-              >
-                {(() => {
-                  const StatusIcon = getStatusIcon(selectedProject.status);
-                  return <StatusIcon size={13} />;
-                })()}
-                {selectedProject.status_label || selectedProject.status}
-              </span>
-              <span className="flex items-center gap-2 text-sm text-[#94A3A6]">
-                <Users size={16} className="text-[#647276]" />
-                {selectedProject.team_name}
-              </span>
-            </div>
-
-            <div className="mt-6 space-y-5">
-              <div className="rounded-2xl border border-orange-100 bg-[#FFF8F3] p-4 sm:p-5">
-                <h3 className="text-sm font-semibold text-orange-800">Description</h3>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#5C554F]">
-                  {selectedProject.description || "Aucune description."}
-                </p>
+              <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-[#1C292D] pb-5">
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${getStatusStyle(selectedProject.status)}`}>
+                  {(() => {
+                    const StatusIcon = getStatusIcon(selectedProject.status);
+                    return <StatusIcon size={13} />;
+                  })()}
+                  {selectedProject.status_label || selectedProject.status}
+                </span>
+                <span className="text-sm text-[#94A3A6]">{selectedProject.task_count ?? projectTasks.length} tâche(s)</span>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
-                  <CalendarDays size={16} className="mt-0.5 shrink-0 text-orange-500" />
-                  <span>
-                    <strong className="block text-xs font-medium text-[#647276]">Début</strong>
-                    {selectedProject.start_date
-                      ? new Date(selectedProject.start_date).toLocaleDateString("fr-FR")
-                      : "Non défini"}
-                  </span>
+              <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                <div className="rounded-2xl border border-orange-100 bg-[#FFF8F3] p-4 sm:p-5 lg:col-span-3">
+                  <h3 className="text-sm font-semibold text-orange-800">Description</h3>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#5C554F]">{selectedProject.description || "Aucune description."}</p>
                 </div>
                 <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
                   <CalendarDays size={16} className="mt-0.5 shrink-0 text-orange-500" />
-                  <span>
-                    <strong className="block text-xs font-medium text-[#647276]">Fin</strong>
-                    {selectedProject.end_date
-                      ? new Date(selectedProject.end_date).toLocaleDateString("fr-FR")
-                      : "Non définie"}
-                  </span>
+                  <span><strong className="block text-xs font-medium text-[#647276]">Début</strong>{selectedProject.start_date ? new Date(selectedProject.start_date).toLocaleDateString("fr-FR") : "Non défini"}</span>
+                </div>
+                <div className="flex items-start gap-2 rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
+                  <CalendarDays size={16} className="mt-0.5 shrink-0 text-orange-500" />
+                  <span><strong className="block text-xs font-medium text-[#647276]">Fin</strong>{selectedProject.end_date ? new Date(selectedProject.end_date).toLocaleDateString("fr-FR") : "Non définie"}</span>
                 </div>
                 <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
-                  <strong className="block text-xs font-medium text-[#647276]">Créé par</strong>
-                  {selectedProject.created_by_username || "Non renseigné"}
+                  <strong className="block text-xs font-medium text-[#647276]">Créé par</strong>{selectedProject.created_by_username || "Non renseigné"}
                 </div>
                 <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
-                  <strong className="block text-xs font-medium text-[#647276]">Tâches terminées</strong>
-                  {selectedProject.completed_task_count ?? 0} sur {selectedProject.task_count ?? 0}
+                  <strong className="block text-xs font-medium text-[#647276]">Tâches terminées</strong>{selectedProject.completed_task_count ?? 0} sur {selectedProject.task_count ?? 0}
                 </div>
                 <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
-                  <strong className="block text-xs font-medium text-[#647276]">Créé le</strong>
-                  {selectedProject.created_at
-                    ? new Date(selectedProject.created_at).toLocaleDateString("fr-FR")
-                    : "Non renseigné"}
+                  <strong className="block text-xs font-medium text-[#647276]">Créé le</strong>{selectedProject.created_at ? new Date(selectedProject.created_at).toLocaleDateString("fr-FR") : "Non renseigné"}
                 </div>
                 <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-sm text-[#94A3A6]">
-                  <strong className="block text-xs font-medium text-[#647276]">Dernière modification</strong>
-                  {selectedProject.updated_at
-                    ? new Date(selectedProject.updated_at).toLocaleDateString("fr-FR")
-                    : "Non renseignée"}
+                  <strong className="block text-xs font-medium text-[#647276]">Dernière modification</strong>{selectedProject.updated_at ? new Date(selectedProject.updated_at).toLocaleDateString("fr-FR") : "Non renseignée"}
                 </div>
-              </div>
-
-              <section aria-labelledby="project-members-title">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 id="project-members-title" className="text-base font-semibold text-[#F1F5F2]">
-                    Équipe associée
-                  </h3>
-                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-800">
-                    {associatedMembers.length}
-                  </span>
-                </div>
-
-                {associatedMembers.length === 0 ? (
-                  <p className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#647276]">
-                    Aucune personne n’est associée à cette équipe.
-                  </p>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {associatedMembers.map((member) => {
-                      const fullName = [member.first_name, member.last_name]
-                        .filter(Boolean)
-                        .join(" ");
-
-                      return (
-                        <div
-                          key={member.id}
-                          className="flex min-w-0 flex-col gap-3 rounded-2xl border border-[#1C292D] bg-[#0B1215] p-4 transition-colors hover:border-orange-300"
-                        >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-800">
-                              {(fullName || member.username || "?").charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-[#F1F5F2]">
-                                {fullName || member.username}
-                              </p>
-                              <p className="truncate text-xs text-[#647276]">
-                                {member.email || `@${member.username}`}
-                                {member.job_title ? ` · ${member.job_title}` : ""}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 pl-12">
-                            <span className="text-xs text-[#94A3A6]">
-                              {member.role_label || member.role || "Membre"}
-                            </span>
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${member.is_active ? "bg-orange-50 text-orange-800" : "bg-slate-100 text-slate-600"}`}>
-                              {member.is_active ? "Actif" : "Inactif"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                <div className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 lg:col-span-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#94A3A6]">Progression du projet</span>
+                    <span className="font-semibold text-orange-400">{(selectedProject.task_count ?? 0) > 0 ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100) : 0}%</span>
                   </div>
-                )}
-              </section>
-
-              <div className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-[#94A3A6]">Progression</span>
-                  <span className="font-semibold text-orange-400">
-                    {(selectedProject.task_count ?? 0) > 0
-                      ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
-                      : 0}%
-                  </span>
-                </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full border border-black/15 bg-white">
-                  <div
-                    className="h-full rounded-full bg-orange-500"
-                    style={{
-                      width: `${(selectedProject.task_count ?? 0) > 0
-                        ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100)
-                        : 0}%`,
-                    }}
-                  />
+                  <div className="mt-2 h-2 overflow-hidden rounded-full border border-black/15 bg-white">
+                    <div className="h-full rounded-full bg-orange-500" style={{ width: `${(selectedProject.task_count ?? 0) > 0 ? Math.round(((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100) : 0}%` }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+
+            <section aria-labelledby="project-features-title" className="min-w-0 rounded-3xl border border-[#26363A] bg-[#10191C] p-5 shadow-2xl sm:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 id="project-features-title" className="flex items-center gap-2 text-base font-semibold text-[#F1F5F2]"><Layers3 size={18} className="text-orange-500" /> Fonctionnalités</h3>
+                <span className="rounded-full bg-[#0B1215] px-2.5 py-1 text-xs text-[#94A3A6]">{projectFeatures.length}</span>
+              </div>
+              {loadingProjectTasks ? (
+                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Chargement des fonctionnalités...</p>
+              ) : projectTasksError ? (
+                <p className="rounded-xl border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-400">{projectTasksError}</p>
+              ) : projectFeatures.length === 0 ? (
+                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Aucune fonctionnalité pour ce projet.</p>
+              ) : (
+                <div className="grid w-full gap-3">
+                  {projectFeatures.map((feature) => (
+                    <button
+                      key={feature.id}
+                      type="button"
+                      onClick={() => setSelectedFeature(feature)}
+                      aria-pressed={Number(selectedFeature?.id) === Number(feature.id)}
+                      className={`w-full rounded-xl border p-3 text-left transition ${Number(selectedFeature?.id) === Number(feature.id) ? "border-orange-500 bg-orange-500/10" : "border-[#1C292D] bg-[#0B1215] hover:border-orange-500/60 hover:bg-[#10191C]"}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-400"><Layers3 size={18} /></span>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="truncate font-semibold text-[#F1F5F2]">{feature.title}</h4>
+                          <p className="truncate text-xs text-[#647276]">{feature.completed_subtask_count}/{feature.subtask_count} tâches terminées</p>
+                        </div>
+                        <div className="w-32 shrink-0">
+                          <span className="block text-right text-xs font-semibold text-orange-300">{feature.progress}%</span>
+                          <div className="mt-1 h-2.5 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm"><div className="h-full rounded-full bg-orange-500" style={{ width: `${feature.progress}%` }} /></div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section aria-labelledby="project-feature-tasks-title" className="min-w-0 rounded-3xl border border-[#26363A] bg-[#10191C] p-5 shadow-2xl sm:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 id="project-feature-tasks-title" className="flex items-center gap-2 text-base font-semibold text-[#F1F5F2]"><ListTodo size={18} className="text-orange-500" /> Tâches</h3>
+                  {selectedFeature && <p className="mt-1 truncate text-sm text-[#94A3A6]">{selectedFeature.title}</p>}
+                </div>
+                {selectedFeature && <span className="rounded-full bg-[#0B1215] px-2.5 py-1 text-xs text-[#94A3A6]">{projectTasks.filter((task) => Number(task.feature) === Number(selectedFeature.id)).length}</span>}
+              </div>
+              {loadingProjectTasks ? (
+                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Chargement des tâches...</p>
+              ) : projectTasksError ? (
+                <p className="rounded-xl border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-400">{projectTasksError}</p>
+              ) : !selectedFeature ? (
+                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Sélectionnez une fonctionnalité pour voir ses tâches.</p>
+              ) : projectTasks.filter((task) => Number(task.feature) === Number(selectedFeature.id)).length === 0 ? (
+                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Aucune tâche dans cette fonctionnalité.</p>
+              ) : (
+                <div className="space-y-3">
+                  {projectTasks.filter((task) => Number(task.feature) === Number(selectedFeature.id)).map((task) => (
+                    <button
+                      key={task.id}
+                      type="button"
+                      onClick={() => navigate("/tasks", { state: { openTaskId: task.id } })}
+                      className="w-full rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-left transition hover:border-orange-500/60 hover:bg-[#10191C] focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <h4 className="font-medium text-[#F1F5F2]">{task.title}</h4>
+                          {task.description && <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[#647276]">{task.description}</p>}
+                        </div>
+                        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium ${task.status === "DONE" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-orange-500/30 bg-orange-500/10 text-orange-300"}`}>{task.status_label || task.status}</span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[#94A3A6]">
+                        <span>Priorité : {task.priority_label || task.priority}</span>
+                        <span>Assignée à : {task.assigned_username || "Personne"}</span>
+                        {task.start_date && <span>Début : {new Date(`${task.start_date}T00:00:00`).toLocaleDateString("fr-FR")}</span>}
+                        {(task.end_date || task.deadline) && <span>Fin : {new Date(task.end_date ? `${task.end_date}T00:00:00` : task.deadline).toLocaleDateString("fr-FR")}</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
         </div>
       )}
 

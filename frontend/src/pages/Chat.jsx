@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
   MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Send,
   Smile,
   Users,
@@ -18,14 +22,14 @@ function Chat() {
 
   const { user } = useAuth();
 
-  const [teams, setTeams] = useState([]);
-  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
 
   const [messages, setMessages] = useState([]);
 
   const [message, setMessage] = useState("");
 
-  const [loadingTeams, setLoadingTeams] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   const [error, setError] = useState("");
@@ -33,66 +37,101 @@ function Chat() {
   const [reactingKey, setReactingKey] = useState("");
 
   const [connected, setConnected] = useState(false);
+  const [projectSidebarWidth, setProjectSidebarWidth] = useState(288);
+  const [memberSidebarWidth, setMemberSidebarWidth] = useState(240);
+  const [projectSidebarCollapsed, setProjectSidebarCollapsed] = useState(false);
+  const [memberSidebarCollapsed, setMemberSidebarCollapsed] = useState(false);
 
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const chatLayoutRef = useRef(null);
+
+  const resizeSidebar = (event, side) => {
+    if (event.buttons !== 1 || !chatLayoutRef.current) {
+      return;
+    }
+
+    const bounds = chatLayoutRef.current.getBoundingClientRect();
+
+    if (side === "left") {
+      setProjectSidebarWidth(Math.min(420, Math.max(220, event.clientX - bounds.left)));
+    } else {
+      setMemberSidebarWidth(Math.min(420, Math.max(220, bounds.right - event.clientX)));
+    }
+  };
 
 
   // ==================================================
-  // CHARGER LES ÉQUIPES
+  // CHARGER LES PROJETS
   // ==================================================
 
   useEffect(() => {
 
-    const fetchTeams = async () => {
+    let isMounted = true;
+
+    const fetchProjects = async (showLoading = false) => {
 
       try {
 
-        setLoadingTeams(true);
-        setError("");
+        if (showLoading) {
+          setLoadingProjects(true);
+          setError("");
+        }
 
         const response = await api.get(
-          "/teams/"
+          "/projects/"
         );
 
-        setTeams(response.data);
-
-        if (response.data.length > 0) {
-
-          setSelectedTeam(
-            response.data[0]
-          );
-
+        if (!isMounted) {
+          return;
         }
+
+        const nextProjects = response.data.map((project) => ({
+          ...project,
+          members: project.member_details || [],
+        }));
+        setProjects(nextProjects);
+
+        setSelectedProject((currentProject) =>
+          nextProjects.find((project) => project.id === currentProject?.id) || nextProjects[0] || null
+        );
 
       } catch (error) {
 
         console.error(error);
 
-        setError(
-          "Impossible de récupérer vos équipes."
-        );
+        if (isMounted && showLoading) {
+          setError("Impossible de récupérer vos projets.");
+        }
 
       } finally {
 
-        setLoadingTeams(false);
+        if (isMounted && showLoading) {
+          setLoadingProjects(false);
+        }
 
       }
 
     };
 
-    fetchTeams();
+    fetchProjects(true);
+    const refreshInterval = setInterval(() => fetchProjects(), 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(refreshInterval);
+    };
 
   }, []);
 
 
   // ==================================================
-  // CHARGER L'HISTORIQUE
+  // CHARGER L'HISTORIQUE DU PROJET
   // ==================================================
 
   useEffect(() => {
 
-    if (!selectedTeam) {
+    if (!selectedProject) {
       return;
     }
 
@@ -107,7 +146,7 @@ function Chat() {
           "/chat/messages/",
           {
             params: {
-              team: selectedTeam.id,
+              project: selectedProject.id,
             },
           }
         );
@@ -132,7 +171,7 @@ function Chat() {
 
     fetchMessages();
 
-  }, [selectedTeam]);
+  }, [selectedProject?.id]);
 
 
   // ==================================================
@@ -141,7 +180,7 @@ function Chat() {
 
   useEffect(() => {
 
-    if (!selectedTeam) {
+    if (!selectedProject) {
       return;
     }
 
@@ -165,7 +204,7 @@ function Chat() {
     }
 
     const socket = new WebSocket(
-      `ws://127.0.0.1:8000/ws/teams/${selectedTeam.id}/chat/?token=${token}`
+      `ws://127.0.0.1:8000/ws/projects/${selectedProject.id}/chat/?token=${token}`
     );
 
     socketRef.current = socket;
@@ -280,7 +319,7 @@ function Chat() {
 
     };
 
-  }, [selectedTeam]);
+  }, [selectedProject?.id]);
 
 
   // ==================================================
@@ -363,14 +402,14 @@ function Chat() {
 
 
   // ==================================================
-  // CHANGEMENT D'ÉQUIPE
+  // CHANGEMENT DE PROJET
   // ==================================================
 
-  const handleTeamChange = (team) => {
+  const handleProjectChange = (project) => {
 
     setMessages([]);
 
-    setSelectedTeam(team);
+    setSelectedProject(project);
 
   };
 
@@ -379,7 +418,7 @@ function Chat() {
   // LOADING
   // ==================================================
 
-  if (loadingTeams) {
+  if (loadingProjects) {
 
     return (
 
@@ -398,23 +437,26 @@ function Chat() {
 
   return (
 
-    <div className="-m-8 flex h-[calc(100vh-5rem)] min-h-[600px] overflow-hidden border border-[#1C292D] bg-[#0E171A]">
+    <div ref={chatLayoutRef} className="-m-8 flex h-[calc(100vh-5rem)] min-h-[600px] overflow-hidden border border-[#1C292D] bg-[#0E171A]">
 
 
       {/* ==================================================
-          SIDEBAR ÉQUIPES
+          SIDEBAR PROJETS
       ================================================== */}
 
-      <aside className="flex w-72 flex-col border-r border-[#1C292D]">
+      <aside
+        style={{ width: projectSidebarCollapsed ? 68 : projectSidebarWidth }}
+        className={`flex shrink-0 flex-col border-r border-[#1C292D] transition-[width] ${projectSidebarCollapsed ? "items-center" : ""}`}
+      >
 
 
         {/* Header */}
 
-        <div className="border-b border-[#1C292D] p-5">
+        <div className={`flex h-[68px] shrink-0 items-center border-b border-[#1C292D] ${projectSidebarCollapsed ? "justify-center px-2" : "justify-between p-5"}`}>
 
           <div className="flex items-center gap-3">
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#152400]">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-[#152400] ${projectSidebarCollapsed ? "hidden" : ""}`}>
 
               <MessageCircle
                 size={20}
@@ -423,33 +465,43 @@ function Chat() {
 
             </div>
 
-            <div>
+            {!projectSidebarCollapsed && <div>
 
               <h1 className="font-semibold text-[#F1F5F2]">
                 Chat
               </h1>
 
               <p className="text-xs text-[#647276]">
-                Discussions d'équipe
+                Discussions de projet
               </p>
 
-            </div>
+            </div>}
 
           </div>
+
+          <button
+            type="button"
+            onClick={() => setProjectSidebarCollapsed((collapsed) => !collapsed)}
+            title={projectSidebarCollapsed ? "Développer les projets" : "Réduire la liste des projets"}
+            aria-label={projectSidebarCollapsed ? "Développer les projets" : "Réduire la liste des projets"}
+            className="rounded-lg p-1.5 text-[#94A3A6] transition hover:bg-[#10191C] hover:text-white"
+          >
+            {projectSidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+          </button>
 
         </div>
 
 
-        {/* Teams */}
+        {/* Projets */}
 
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className={`flex-1 overflow-y-auto p-3 ${projectSidebarCollapsed ? "hidden" : ""}`}>
 
           <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-[#47565A]">
-            Mes équipes
+            Mes projets
           </p>
 
 
-          {teams.length === 0 ? (
+          {projects.length === 0 ? (
 
             <div className="rounded-xl bg-[#10191C] p-4 text-center">
 
@@ -459,7 +511,7 @@ function Chat() {
               />
 
               <p className="mt-2 text-sm text-[#647276]">
-                Aucune équipe
+                Aucun projet
               </p>
 
             </div>
@@ -468,21 +520,21 @@ function Chat() {
 
             <div className="space-y-1">
 
-              {teams.map((team) => {
+              {projects.map((project) => {
 
                 const isSelected =
-                  selectedTeam?.id ===
-                  team.id;
+                  selectedProject?.id ===
+                  project.id;
 
 
                 return (
 
                   <button
-                    key={team.id}
+                    key={project.id}
                     type="button"
                     onClick={() =>
-                      handleTeamChange(
-                        team
+                      handleProjectChange(
+                        project
                       )
                     }
                     className={`w-full rounded-xl px-3 py-3 text-left transition ${
@@ -513,14 +565,14 @@ function Chat() {
 
                         <p className="truncate text-sm font-medium">
 
-                          {team.name}
+                          {project.name}
 
                         </p>
 
 
                         <p className="mt-0.5 text-xs opacity-60">
 
-                          {team.members?.length ||
+                          {project.members?.filter((member) => member.is_active).length ||
                             0}{" "}
                           membre(s)
 
@@ -544,6 +596,17 @@ function Chat() {
 
       </aside>
 
+      {!projectSidebarCollapsed && (
+        <div
+          role="separator"
+          aria-label="Redimensionner la liste des projets"
+          aria-orientation="vertical"
+          onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
+          onPointerMove={(event) => resizeSidebar(event, "left")}
+          className="z-10 -mx-1 w-2 shrink-0 cursor-col-resize touch-none hover:bg-[#B6FF00]/30"
+        />
+      )}
+
 
       {/* ==================================================
           CHAT AREA
@@ -554,22 +617,22 @@ function Chat() {
 
         {/* Header */}
 
-        <header className="flex items-center justify-between border-b border-[#1C292D] px-6 py-4">
+        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-[#1C292D] px-6">
 
           <div>
 
             <h2 className="font-semibold text-[#F1F5F2]">
 
-              {selectedTeam?.name ||
+              {selectedProject?.name ||
                 "Chat"}
 
             </h2>
 
             <p className="mt-0.5 text-xs text-[#647276]">
 
-              {selectedTeam
-                ? `${selectedTeam.members?.length || 0} membre(s)`
-                : "Sélectionnez une équipe"}
+              {selectedProject
+                ? `${selectedProject.members?.filter((member) => member.is_active).length || 0} membre(s)`
+                : "Sélectionnez un projet"}
 
             </p>
 
@@ -625,7 +688,7 @@ function Chat() {
         <div className="flex-1 overflow-y-auto p-6">
 
 
-          {!selectedTeam ? (
+          {!selectedProject ? (
 
             <div className="flex h-full items-center justify-center">
 
@@ -637,7 +700,7 @@ function Chat() {
                 />
 
                 <p className="mt-3 text-[#647276]">
-                  Sélectionnez une équipe
+                  Sélectionnez un projet
                 </p>
 
               </div>
@@ -853,7 +916,7 @@ function Chat() {
 
         {/* Input */}
 
-        {selectedTeam && (
+        {selectedProject && (
 
           <form
             onSubmit={handleSubmit}
@@ -896,6 +959,75 @@ function Chat() {
         )}
 
       </section>
+
+      {!memberSidebarCollapsed && (
+        <div
+          role="separator"
+          aria-label="Redimensionner la liste des membres"
+          aria-orientation="vertical"
+          onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
+          onPointerMove={(event) => resizeSidebar(event, "right")}
+          className="z-10 -mx-1 w-2 shrink-0 cursor-col-resize touch-none hover:bg-[#B6FF00]/30"
+        />
+      )}
+
+      <aside
+        style={{ width: memberSidebarCollapsed ? 68 : memberSidebarWidth }}
+        className={`flex shrink-0 flex-col border-l border-[#1C292D] bg-[#0B1215] transition-[width] ${memberSidebarCollapsed ? "items-center" : ""}`}
+      >
+        <div className={`flex h-[68px] shrink-0 items-center border-b border-[#1C292D] ${memberSidebarCollapsed ? "justify-center px-2" : "justify-between p-5"}`}>
+          {!memberSidebarCollapsed && <div>
+            <h3 className="font-semibold text-[#F1F5F2]">Membres</h3>
+            <p className="mt-1 text-xs text-[#647276]">
+            {selectedProject?.members?.filter((member) => member.is_active && member.is_online).length || 0} en ligne · {selectedProject?.members?.filter((member) => member.is_active).length || 0} membre(s)
+            </p>
+          </div>}
+          <button
+            type="button"
+            onClick={() => setMemberSidebarCollapsed((collapsed) => !collapsed)}
+            title={memberSidebarCollapsed ? "Développer les membres" : "Réduire les membres"}
+            aria-label={memberSidebarCollapsed ? "Développer les membres" : "Réduire les membres"}
+            className="rounded-lg p-1.5 text-[#94A3A6] transition hover:bg-[#10191C] hover:text-white"
+          >
+            {memberSidebarCollapsed ? <PanelRightOpen size={17} /> : <PanelRightClose size={17} />}
+          </button>
+        </div>
+
+        <div className={`flex-1 space-y-1 overflow-y-auto p-3 ${memberSidebarCollapsed ? "hidden" : ""}`}>
+          {(selectedProject?.members || [])
+            .filter((member) => member.is_active)
+            .sort((first, second) => Number(second.is_online) - Number(first.is_online))
+            .map((member) => {
+              const displayName = [member.first_name, member.last_name].filter(Boolean).join(" ") || member.username;
+
+              return (
+                <div key={member.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
+                  <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#152400] text-sm font-semibold text-[#B6FF00]">
+                    {member.avatar ? (
+                      <img src={member.avatar} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      member.username?.charAt(0).toUpperCase()
+                    )}
+                    <span
+                      className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ${member.is_online ? "bg-[#22C55E]" : "bg-[#47565A]"}`}
+                      aria-label={member.is_online ? "En ligne" : "Déconnecté"}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[#F1F5F2]">{displayName}</p>
+                    <p className={`text-xs ${member.is_online ? "text-[#4ADE80]" : "text-[#647276]"}`}>
+                      {member.is_online ? "En ligne" : "Déconnecté"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+
+          {!selectedProject?.members?.some((member) => member.is_active) && (
+            <p className="px-2 py-3 text-sm text-[#647276]">Aucun membre dans ce groupe.</p>
+          )}
+        </div>
+      </aside>
 
     </div>
 
