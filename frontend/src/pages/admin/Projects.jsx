@@ -60,6 +60,7 @@ function Projects() {
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [projectTasks, setProjectTasks] = useState([]);
   const [boardTaskIds, setBoardTaskIds] = useState([]);
+  const [projectView, setProjectView] = useState("tasks");
   const [projectFeatures, setProjectFeatures] = useState([]);
   const [projectRoles, setProjectRoles] = useState([]);
   const [updatingRoleMemberId, setUpdatingRoleMemberId] = useState(null);
@@ -150,6 +151,7 @@ function Projects() {
 
   const openProjectDetails = (project) => {
     setSelectedProject(project);
+    setProjectView("tasks");
     setBoardTaskIds([]);
     setSelectedFeature(null);
     setSelectedMemberId("");
@@ -227,7 +229,9 @@ function Projects() {
     ])
       .then(([tasksResponse, featuresResponse, membersResponse]) => {
         if (isMounted) {
-          setProjectTasks(tasksResponse.data.filter((task) => Number(task.project) === Number(selectedProject.id)));
+          const tasks = tasksResponse.data.filter((task) => Number(task.project) === Number(selectedProject.id));
+          setProjectTasks(tasks);
+          setBoardTaskIds(tasks.map((task) => Number(task.id)));
           setProjectFeatures(featuresResponse.data.filter((feature) => Number(feature.project) === Number(selectedProject.id)));
           setProjectRoles(membersResponse.data.roles || []);
         }
@@ -400,6 +404,7 @@ function Projects() {
         ]);
 
         setSelectedProject(response.data);
+        setProjectView("tasks");
         setSelectedMemberId("");
         setMembersError("");
 
@@ -639,6 +644,7 @@ function Projects() {
         }
       } else {
         setProjectTasks((previous) => [data, ...previous]);
+        setBoardTaskIds((previous) => [...previous, Number(data.id)]);
         const completedDelta = Number(data.status === "DONE");
         const adjustCreatedFeature = (feature) => {
           if (!feature || Number(feature.id) !== Number(selectedFeature.id)) return feature;
@@ -1277,7 +1283,56 @@ function Projects() {
       {/* DÉTAILS DU PROJET */}
 
       {selectedProject && (
-          <div className="mt-8 grid w-full items-stretch gap-5 xl:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]">
+        <div className="mt-8">
+          <nav
+            aria-label="Navigation du projet"
+            role="tablist"
+            className="flex overflow-x-auto border-b border-[#1C292D]"
+          >
+            {[
+              { id: "tasks", label: "Tâches", count: projectTasks.length },
+              { id: "management", label: "Gestion de tâches" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={projectView === tab.id}
+                onClick={() => setProjectView(tab.id)}
+                className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-5 py-4 text-base font-semibold transition ${
+                  projectView === tab.id
+                    ? "border-orange-500 text-[#F1F5F2]"
+                    : "border-transparent text-[#94A3A6] hover:border-[#647276] hover:text-[#F1F5F2]"
+                }`}
+              >
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className={`rounded px-2 py-0.5 text-xs ${
+                    projectView === tab.id
+                      ? "bg-orange-500 text-black"
+                      : "bg-[#10191C] text-[#94A3A6]"
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {projectView === "tasks" ? (
+            <div className="mt-5 min-w-0">
+              <ProjectTaskBoard
+                key={selectedProject.id}
+                project={selectedProject}
+                tasks={projectTasks}
+                selectedTaskIds={boardTaskIds}
+                loading={loadingProjectTasks}
+                error={projectTasksError}
+                onTaskUpdated={handleProjectTaskUpdated}
+              />
+            </div>
+          ) : (
+          <div className="mt-6 grid w-full items-stretch gap-5 xl:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]">
 
               <section aria-labelledby="admin-project-members-title" className="flex h-[260px] min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-[#1C292D] bg-[#0B1215] p-4 sm:p-5">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1564,18 +1619,9 @@ function Projects() {
               </div>
             </section>
 
-          <div className="mt-8 min-w-0 xl:col-span-3">
-            <ProjectTaskBoard
-              key={selectedProject.id}
-              project={selectedProject}
-              tasks={projectTasks}
-              selectedTaskIds={boardTaskIds}
-              loading={loadingProjectTasks}
-              error={projectTasksError}
-              onTaskUpdated={handleProjectTaskUpdated}
-            />
           </div>
-                </div>
+          )}
+        </div>
 
       )}
 
