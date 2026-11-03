@@ -12,7 +12,7 @@ import {
   WifiOff,
 } from "lucide-react";
 
-import api from "../services/api";
+import api, { getWebSocketUrl } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "👏", "🎉"];
@@ -204,7 +204,7 @@ function Chat() {
     }
 
     const socket = new WebSocket(
-      `ws://127.0.0.1:8000/ws/projects/${selectedProject.id}/chat/?token=${token}`
+      getWebSocketUrl(`/ws/projects/${selectedProject.id}/chat/?token=${encodeURIComponent(token)}`)
     );
 
     socketRef.current = socket;

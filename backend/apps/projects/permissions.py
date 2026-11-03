@@ -1,10 +1,12 @@
 from rest_framework import permissions
 
+from apps.teams.models import Role
+
 
 def user_is_project_manager(project, user):
     return project.member_roles.filter(
         user_id=user.id,
-        role__slug="PROJECT_MANAGER",
+        role__in=Role.project_manager_roles(),
     ).exists()
 
 

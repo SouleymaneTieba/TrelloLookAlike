@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.utils.text import slugify
 
 
@@ -36,13 +37,23 @@ class Role(models.Model):
         return self.label
 
     @classmethod
+    def project_manager_roles(cls):
+        return cls.objects.filter(
+            Q(slug=cls.SLUG_PROJECT_MANAGER)
+            | Q(label__iexact="Chef de projet")
+        )
+
+    @classmethod
     def make_slug(cls, label, exclude_id=None):
 
-        base = (
-            slugify(label)
-            .replace("-", "_")
-            .upper()
-        ) or "ROLE"
+        if label.strip().casefold() == "chef de projet":
+            base = cls.SLUG_PROJECT_MANAGER
+        else:
+            base = (
+                slugify(label)
+                .replace("-", "_")
+                .upper()
+            ) or "ROLE"
 
         slug = base
         index = 2

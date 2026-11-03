@@ -6,10 +6,11 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import {
+  ArrowRight,
+  CalendarDays,
   CheckSquare,
+  Clock3,
   FolderKanban,
-  ListTodo,
-  ShieldCheck,
   UserRound,
   Users,
 } from "lucide-react";
@@ -29,6 +30,9 @@ function AdminDashboard() {
     tasks: 0,
 
   });
+
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -50,13 +54,15 @@ function AdminDashboard() {
         setLoading(true);
         setError("");
 
-        const response = await api.get(
-          "/users/admin/dashboard/stats/"
-        );
+        const [statsResponse, projectsResponse, tasksResponse] = await Promise.all([
+          api.get("/users/admin/dashboard/stats/"),
+          api.get("/projects/"),
+          api.get("/tasks/"),
+        ]);
 
-        setStats(
-          response.data
-        );
+        setStats(statsResponse.data);
+        setProjects(projectsResponse.data);
+        setTasks(tasksResponse.data);
 
       } catch (error) {
 
@@ -66,7 +72,7 @@ function AdminDashboard() {
         );
 
         setError(
-          "Impossible de charger les statistiques."
+          "Impossible de charger les données du tableau de bord."
         );
 
       } finally {
@@ -109,6 +115,11 @@ function AdminDashboard() {
     },
 
   ];
+
+  const recentProjects = projects.slice(0, 5);
+  const tasksToHandle = tasks
+    .filter((task) => task.status !== "DONE")
+    .slice(0, 5);
 
 
   return (
@@ -199,132 +210,122 @@ function AdminDashboard() {
       </div>
 
 
-      {/* QUICK ACTIONS */}
+      {/* PROJETS RÉCENTS ET TÂCHES À TRAITER */}
 
-      <div className="mt-8 rounded-2xl border border-[#1C292D] bg-[#0B1215] p-6">
+      <div className="mt-8 grid gap-5 lg:grid-cols-2">
 
-        <h2 className="text-lg font-semibold text-[#F1F5F2]">
-          Administration
-        </h2>
+        <section className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-6">
 
-        <p className="mt-1 text-sm text-[#647276]">
-          Gérez les différents éléments de votre espace de travail.
-        </p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#F1F5F2]">
+                Projets récents
+              </h2>
+              <p className="mt-1 text-sm text-[#647276]">
+                Les derniers projets créés.
+              </p>
+            </div>
 
+            <button
+              type="button"
+              onClick={() => navigate("/admin/projects")}
+              className="flex shrink-0 items-center gap-2 text-sm font-medium text-[#B6FF00] hover:text-[#C4FF33]"
+            >
+              Voir tout
+              <ArrowRight size={16} />
+            </button>
+          </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 space-y-3">
+            {loading ? (
+              <p className="py-4 text-sm text-[#647276]">Chargement des projets...</p>
+            ) : recentProjects.length === 0 ? (
+              <p className="py-4 text-sm text-[#647276]">Aucun projet récent.</p>
+            ) : (
+              recentProjects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() => navigate("/admin/projects")}
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-left transition hover:border-[#304800]"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <FolderKanban size={18} className="shrink-0 text-[#B6FF00]" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-[#F1F5F2]">
+                        {project.name}
+                      </span>
+                      <span className="mt-1 flex items-center gap-1.5 text-xs text-[#647276]">
+                        <CalendarDays size={13} />
+                        {new Date(project.created_at).toLocaleDateString("fr-FR")}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full border border-orange-500/40 bg-orange-500/10 px-2.5 py-1 text-xs text-orange-300">
+                    {project.status_label}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
 
-          <button
-            type="button"
-            onClick={() => navigate("/admin/users")}
-            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
-          >
+        </section>
 
-            <UserRound
-              size={20}
-              className="text-[#B6FF00]"
-            />
+        <section className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-6">
 
-            <h3 className="mt-4 font-medium text-[#F1F5F2]">
-              Utilisateurs
-            </h3>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#F1F5F2]">
+                Tâches à traiter
+              </h2>
+              <p className="mt-1 text-sm text-[#647276]">
+                Les tâches qui ne sont pas encore terminées.
+              </p>
+            </div>
 
-            <p className="mt-1 text-sm text-[#647276]">
-              Gérer les comptes et les rôles.
-            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/admin/tasks")}
+              className="flex shrink-0 items-center gap-2 text-sm font-medium text-[#B6FF00] hover:text-[#C4FF33]"
+            >
+              Voir tout
+              <ArrowRight size={16} />
+            </button>
+          </div>
 
-          </button>
+          <div className="mt-5 space-y-3">
+            {loading ? (
+              <p className="py-4 text-sm text-[#647276]">Chargement des tâches...</p>
+            ) : tasksToHandle.length === 0 ? (
+              <p className="py-4 text-sm text-[#647276]">Aucune tâche à traiter.</p>
+            ) : (
+              tasksToHandle.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => navigate("/admin/tasks")}
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-left transition hover:border-[#304800]"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Clock3 size={18} className="shrink-0 text-[#B6FF00]" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-[#F1F5F2]">
+                        {task.title}
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-[#647276]">
+                        {task.project_name} · {task.priority_label}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full border border-orange-500/40 bg-orange-500/10 px-2.5 py-1 text-xs text-orange-300">
+                    {task.status_label}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
 
-
-          <button
-            type="button"
-            onClick={() => navigate("/admin/teams")}
-            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
-          >
-
-            <Users
-              size={20}
-              className="text-[#B6FF00]"
-            />
-
-            <h3 className="mt-4 font-medium text-[#F1F5F2]">
-              Équipes
-            </h3>
-
-            <p className="mt-1 text-sm text-[#647276]">
-              Créer les équipes et leurs membres.
-            </p>
-
-          </button>
-
-
-          <button
-            type="button"
-            onClick={() => navigate("/admin/projects")}
-            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
-          >
-
-            <FolderKanban
-              size={20}
-              className="text-[#B6FF00]"
-            />
-
-            <h3 className="mt-4 font-medium text-[#F1F5F2]">
-              Projets
-            </h3>
-
-            <p className="mt-1 text-sm text-[#647276]">
-              Superviser les projets de l'organisation.
-            </p>
-
-          </button>
-
-
-          <button
-            type="button"
-            onClick={() => navigate("/admin/roles")}
-            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
-          >
-
-            <ShieldCheck
-              size={20}
-              className="text-[#B6FF00]"
-            />
-
-            <h3 className="mt-4 font-medium text-[#F1F5F2]">
-              Rôles
-            </h3>
-
-            <p className="mt-1 text-sm text-[#647276]">
-              Gérer les rôles disponibles dans l'organisation.
-            </p>
-
-          </button>
-
-
-          <button
-            type="button"
-            onClick={() => navigate("/admin/tasks")}
-            className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-5 text-left transition hover:border-[#304800] hover:bg-[#152400]"
-          >
-
-            <ListTodo
-              size={20}
-              className="text-[#B6FF00]"
-            />
-
-            <h3 className="mt-4 font-medium text-[#F1F5F2]">
-              Tâches
-            </h3>
-
-            <p className="mt-1 text-sm text-[#647276]">
-              Superviser et gérer les tâches de l'organisation.
-            </p>
-
-          </button>
-
-
-        </div>
+        </section>
 
       </div>
 

@@ -41,6 +41,9 @@ class TaskPermission(permissions.BasePermission):
         if not (is_project_manager or is_project_member):
             return False
 
+        if getattr(view, "action", None) == "comments":
+            return request.method in permissions.SAFE_METHODS or request.method == "POST"
+
         if request.method in permissions.SAFE_METHODS:
             return True
 

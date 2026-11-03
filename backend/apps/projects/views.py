@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -65,9 +66,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
 
-        project = serializer.save(
-            created_by=self.request.user
-        )
+        with transaction.atomic():
+            project = serializer.save(
+                created_by=self.request.user,
+                status=Project.Status.PLANNED,
+            )
+            project.status = Project.Status.IN_PROGRESS
+            project.save(update_fields=["status", "updated_at"])
 
         # ==========================================
         # NOTIFICATION : NOUVEAU PROJET

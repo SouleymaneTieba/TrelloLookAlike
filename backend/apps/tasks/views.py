@@ -1,17 +1,21 @@
 from django.db import models
 from django.utils import timezone
 
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from apps.notifications.models import Notification
 from apps.notifications.services import NotificationService
 from apps.projects.models import Project
+from apps.teams.models import Role
 from apps.teams.models import TeamMember
 
 from .models import (
     Feature,
     Task,
     TaskAvailabilityReport,
+    TaskComment,
 )
 
 from .permissions import (
@@ -23,6 +27,7 @@ from .permissions import (
 from .serializers import (
     FeatureSerializer,
     TaskAvailabilityReportSerializer,
+    TaskCommentSerializer,
     TaskSerializer,
 )
 
@@ -52,6 +57,22 @@ class TaskViewSet(viewsets.ModelViewSet):
     permission_classes = [
         TaskPermission
     ]
+
+    @action(detail=True, methods=["get", "post"])
+    def comments(self, request, pk=None):
+        task = self.get_object()
+
+        if request.method == "GET":
+            comments = task.comments.select_related("author").all()
+            return Response(TaskCommentSerializer(comments, many=True).data)
+
+        serializer = TaskCommentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        comment = serializer.save(task=task, author=request.user)
+        return Response(
+            TaskCommentSerializer(comment).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     # ==================================================
     # QUERYSET
@@ -92,7 +113,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
         managed_project_ids = Project.objects.filter(
             member_roles__user=user,
-            member_roles__role__slug="PROJECT_MANAGER",
+            member_roles__role__in=Role.project_manager_roles(),
         ).values_list("id", flat=True).distinct()
 
         if managed_project_ids.exists():

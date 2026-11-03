@@ -19,7 +19,7 @@ import {
 } from "react";
 
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import api, { getWebSocketUrl } from "../services/api";
 
 import NotificationDropdown from "../components/notifications/NotificationDropdown";
 import ThemeToggle from "../components/ThemeToggle";
@@ -156,7 +156,7 @@ function AdminLayout() {
 
     const socket =
       new WebSocket(
-        `ws://127.0.0.1:8000/ws/notifications/?token=${encodeURIComponent(token)}`
+        getWebSocketUrl(`/ws/notifications/?token=${encodeURIComponent(token)}`)
       );
 
 

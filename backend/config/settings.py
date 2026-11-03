@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-n@q)_fo1=on%j(7-5t+q!r1rfk#xi@9nuh7dy9$9rir@m=gtux
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 
 # ==========================================================
@@ -99,6 +99,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://(?:10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}):5173$",
+]
+
 
 # ==========================================================
 # URL / APPLICATION SERVERS
@@ -150,9 +154,9 @@ DATABASES = {
 
         "PASSWORD": "friday_password",
 
-        "HOST": "localhost",
+        "HOST": os.environ.get("DATABASE_HOST", "localhost"),
 
-        "PORT": "5434",
+        "PORT": os.environ.get("DATABASE_PORT", "5434"),
     }
 }
 

@@ -7,6 +7,11 @@ It exposes the ASGI callable as a module-level variable named
 
 import os
 
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    "config.settings",
+)
+
 from channels.routing import (
     ProtocolTypeRouter,
     URLRouter,
@@ -15,6 +20,8 @@ from channels.routing import (
 from django.core.asgi import (
     get_asgi_application,
 )
+
+django_application = get_asgi_application()
 
 from apps.chat.middleware import (
     JWTAuthMiddleware,
@@ -27,16 +34,6 @@ from apps.chat.routing import (
 from apps.notifications.routing import (
     websocket_urlpatterns as notification_websocket_urlpatterns,
 )
-
-
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "config.settings",
-)
-
-
-django_application = get_asgi_application()
-
 
 # ==========================================
 # WEBSOCKET ROUTES

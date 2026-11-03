@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
-  ArrowUpRight,
+  ArrowRight,
+  CalendarDays,
   CheckCircle2,
   Clock3,
+  FolderKanban,
   ListTodo,
-  Users,
 } from "lucide-react";
 
 import api from "../services/api";
@@ -17,7 +18,7 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const [tasks, setTasks] = useState([]);
-  const [teams, setTeams] = useState([]);
+  const [projects, setProjects] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,14 +28,14 @@ function Dashboard() {
       try {
         const [
           tasksResponse,
-          teamsResponse,
+          projectsResponse,
         ] = await Promise.all([
           api.get("/tasks/"),
-          api.get("/teams/"),
+          api.get("/projects/"),
         ]);
 
         setTasks(tasksResponse.data);
-        setTeams(teamsResponse.data);
+        setProjects(projectsResponse.data);
 
       } catch (error) {
         console.error(error);
@@ -50,29 +51,31 @@ function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  const totalTasks = tasks.length;
+  const personalTasks = tasks.filter(
+    (task) =>
+      task.assigned_to === user?.id ||
+      task.created_by === user?.id
+  );
 
-  const inProgressTasks = tasks.filter(
+  const inProgressTasks = personalTasks.filter(
     (task) =>
       task.status === "IN_PROGRESS"
   ).length;
 
-  const completedTasks = tasks.filter(
+  const completedTasks = personalTasks.filter(
     (task) =>
       task.status === "DONE"
   ).length;
 
-  const teamMembers = teams.reduce(
-    (total, team) =>
-      total +
-      (team.members?.length || 0),
-    0
-  );
+  const tasksToHandle = personalTasks
+    .filter((task) => task.status !== "DONE")
+    .slice(0, 5);
+  const recentProjects = projects.slice(0, 5);
 
   const stats = [
     {
       label: "Mes tâches",
-      value: totalTasks,
+      value: personalTasks.length,
       icon: ListTodo,
     },
     {
@@ -86,9 +89,9 @@ function Dashboard() {
       icon: CheckCircle2,
     },
     {
-      label: "Membres",
-      value: teamMembers,
-      icon: Users,
+      label: "Mes projets",
+      value: projects.length,
+      icon: FolderKanban,
     },
   ];
 
@@ -117,7 +120,7 @@ function Dashboard() {
         <div>
 
           <p className="mb-2 text-sm font-medium text-[#B6FF00]">
-            Overview
+            Mon espace
           </p>
 
           <h1 className="text-3xl font-semibold tracking-tight text-[#F1F5F2]">
@@ -213,145 +216,117 @@ function Dashboard() {
 
       </div>
 
-      {/* TASKS */}
-      <div className="mt-8 rounded-2xl border border-[#1C292D] bg-[#0B1215]">
+      {/* PROJETS RÉCENTS ET TÂCHES À TRAITER */}
+      <div className="mt-8 grid gap-5 lg:grid-cols-2">
 
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#1C292D] px-6 py-5">
-
-          <div>
-
-            <h2 className="text-lg font-semibold text-[#F1F5F2]">
-              Mes tâches
-            </h2>
-
-            <p className="mt-1 text-sm text-[#647276]">
-              Les dernières tâches de votre équipe.
-            </p>
-
-          </div>
-
-        </div>
-
-        {/* Tasks */}
-        {tasks.length === 0 ? (
-
-          <div className="px-6 py-12 text-center">
-
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#152400]">
-
-              <ListTodo
-                size={25}
-                className="text-[#B6FF00]"
-              />
-
+        <section className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#F1F5F2]">
+                Projets récents
+              </h2>
+              <p className="mt-1 text-sm text-[#647276]">
+                Vos projets les plus récents.
+              </p>
             </div>
 
-            <p className="mt-4 font-medium text-[#F1F5F2]">
-              Aucune tâche
-            </p>
-
-            <p className="mt-1 text-sm text-[#647276]">
-              Vous n'avez actuellement
-              aucune tâche.
-            </p>
-
+            <button
+              type="button"
+              onClick={() => navigate("/projects")}
+              className="flex shrink-0 items-center gap-2 text-sm font-medium text-[#B6FF00] hover:text-[#C4FF33]"
+            >
+              Voir tout
+              <ArrowRight size={16} />
+            </button>
           </div>
 
-        ) : (
-
-          <div className="divide-y divide-[#1C292D]">
-
-            {tasks
-              .slice(0, 5)
-              .map((task) => {
-
-                const isDone =
-                  task.status === "DONE";
-
-                const isInProgress =
-                  task.status ===
-                  "IN_PROGRESS";
-
-                return (
-                  <div
-                    key={task.id}
-                    className="flex items-center justify-between gap-4 px-6 py-5 transition hover:bg-[#FFF3EB]"
-                  >
-
-                    <div className="flex min-w-0 items-center gap-4">
-
-                      <div
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
-                          isDone
-                            ? "border-[#B6FF00] text-[#B6FF00]"
-                            : "border-[#334348] text-[#647276]"
-                        }`}
-                      >
-
-                        {isDone ? (
-                          <CheckCircle2
-                            size={19}
-                          />
-                        ) : (
-                          <div className="h-2 w-2 rounded-full bg-current" />
-                        )}
-
-                      </div>
-
-                      <div className="min-w-0">
-
-                        <p className="truncate font-medium text-[#F1F5F2]">
-                          {task.title}
-                        </p>
-
-                        <p className="mt-1 text-xs text-[#647276]">
-                          Priorité :{" "}
-                          {task.priority}
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
-                        isDone
-                          ? "bg-[#152400] text-[#B6FF00]"
-                          : isInProgress
-                          ? "bg-[#13231A] text-[#9BE600]"
-                          : "bg-[#10191C] text-[#94A3A6]"
-                      }`}
-                    >
-                      {isDone
-                        ? "Terminé"
-                        : isInProgress
-                        ? "En cours"
-                        : "À faire"}
+          <div className="mt-5 space-y-3">
+            {recentProjects.length === 0 ? (
+              <p className="py-4 text-sm text-[#647276]">
+                Vous n'avez aucun projet récent.
+              </p>
+            ) : (
+              recentProjects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() => navigate("/projects")}
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-left transition hover:border-[#304800]"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <FolderKanban size={18} className="shrink-0 text-[#B6FF00]" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-[#F1F5F2]">
+                        {project.name}
+                      </span>
+                      <span className="mt-1 flex items-center gap-1.5 text-xs text-[#647276]">
+                        <CalendarDays size={13} />
+                        {new Date(project.created_at).toLocaleDateString("fr-FR")}
+                      </span>
                     </span>
-
-                  </div>
-                );
-              })}
-
+                  </span>
+                  <span className="shrink-0 rounded-full border border-orange-500/40 bg-orange-500/10 px-2.5 py-1 text-xs text-orange-300">
+                    {project.status_label}
+                  </span>
+                </button>
+              ))
+            )}
           </div>
+        </section>
 
-        )}
-
-        {/* Footer */}
-        {tasks.length > 0 && (
-          <div className="border-t border-[#1C292D] px-6 py-4 text-center">
+        <section className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#F1F5F2]">
+                Tâches à traiter
+              </h2>
+              <p className="mt-1 text-sm text-[#647276]">
+                Vos tâches assignées ou créées qui restent à terminer.
+              </p>
+            </div>
 
             <button
               type="button"
               onClick={() => navigate("/tasks")}
-              className="text-sm font-medium text-[#B6FF00] hover:text-[#C4FF33]"
+              className="flex shrink-0 items-center gap-2 text-sm font-medium text-[#B6FF00] hover:text-[#C4FF33]"
             >
-              Voir toutes les tâches →
+              Voir tout
+              <ArrowRight size={16} />
             </button>
-
           </div>
-        )}
+
+          <div className="mt-5 space-y-3">
+            {tasksToHandle.length === 0 ? (
+              <p className="py-4 text-sm text-[#647276]">
+                Vous n'avez aucune tâche à traiter.
+              </p>
+            ) : (
+              tasksToHandle.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => navigate("/tasks")}
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-left transition hover:border-[#304800]"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Clock3 size={18} className="shrink-0 text-[#B6FF00]" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-[#F1F5F2]">
+                        {task.title}
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-[#647276]">
+                        {task.project_name} · {task.priority_label}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full border border-orange-500/40 bg-orange-500/10 px-2.5 py-1 text-xs text-orange-300">
+                    {task.status_label}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
 
       </div>
 

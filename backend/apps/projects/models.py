@@ -61,7 +61,7 @@ class Project(models.Model):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.IN_PROGRESS,
+        default=Status.PLANNED,
     )
 
     start_date = models.DateField(null=True, blank=True)

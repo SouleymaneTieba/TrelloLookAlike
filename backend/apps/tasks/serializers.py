@@ -6,6 +6,7 @@ from .models import (
     Feature,
     Task,
     TaskAvailabilityReport,
+    TaskComment,
 )
 
 
@@ -352,6 +353,61 @@ class TaskSerializer(serializers.ModelSerializer):
             })
 
         return attrs
+
+
+class TaskCommentSerializer(serializers.ModelSerializer):
+
+    author_username = serializers.CharField(
+        source="author.username",
+        read_only=True,
+        allow_null=True,
+    )
+    author_first_name = serializers.CharField(
+        source="author.first_name",
+        read_only=True,
+        allow_null=True,
+    )
+    author_last_name = serializers.CharField(
+        source="author.last_name",
+        read_only=True,
+        allow_null=True,
+    )
+    author_avatar = serializers.URLField(
+        source="author.avatar",
+        read_only=True,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = TaskComment
+        fields = [
+            "id",
+            "task",
+            "author",
+            "author_username",
+            "author_first_name",
+            "author_last_name",
+            "author_avatar",
+            "content",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "task",
+            "author",
+            "author_username",
+            "author_first_name",
+            "author_last_name",
+            "author_avatar",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate_content(self, value):
+        content = value.strip()
+        if not content:
+            raise serializers.ValidationError("Le commentaire ne peut pas être vide.")
+        return content
 
 
 class TaskAvailabilityReportSerializer(

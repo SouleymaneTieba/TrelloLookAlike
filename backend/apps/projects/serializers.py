@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from apps.users.presence import is_user_online
+from apps.teams.models import Role
 
 from .models import Project, ProjectMemberRole
 
@@ -25,6 +26,10 @@ class ProjectSerializer(serializers.ModelSerializer):
     status_label = serializers.CharField(
         source="get_status_display",
         read_only=True,
+    )
+    status = serializers.ChoiceField(
+        choices=Project.Status.choices,
+        default=Project.Status.PLANNED,
     )
     task_count = serializers.SerializerMethodField()
     completed_task_count = serializers.SerializerMethodField()
@@ -87,7 +92,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         return list(
             ProjectMemberRole.objects.filter(
                 project=obj,
-                role__slug="PROJECT_MANAGER",
+                role__in=Role.project_manager_roles(),
             ).values_list("user_id", flat=True)
         )
 
