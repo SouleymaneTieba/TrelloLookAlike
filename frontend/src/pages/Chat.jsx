@@ -979,7 +979,7 @@ function Chat() {
           {!memberSidebarCollapsed && <div>
             <h3 className="font-semibold text-[#F1F5F2]">Membres</h3>
             <p className="mt-1 text-xs text-[#647276]">
-            {selectedProject?.members?.filter((member) => member.is_active && member.is_online).length || 0} en ligne · {selectedProject?.members?.filter((member) => member.is_active).length || 0} membre(s)
+            {selectedProject?.members?.filter((member) => member.is_active).length || 0} membre(s)
             </p>
           </div>}
           <button
@@ -996,28 +996,20 @@ function Chat() {
         <div className={`flex-1 space-y-1 overflow-y-auto p-3 ${memberSidebarCollapsed ? "hidden" : ""}`}>
           {(selectedProject?.members || [])
             .filter((member) => member.is_active)
-            .sort((first, second) => Number(second.is_online) - Number(first.is_online))
             .map((member) => {
               const displayName = [member.first_name, member.last_name].filter(Boolean).join(" ") || member.username;
 
               return (
                 <div key={member.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
-                  <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#152400] text-sm font-semibold text-[#B6FF00]">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#152400] text-sm font-semibold text-[#B6FF00]">
                     {member.avatar ? (
                       <img src={member.avatar} alt="" className="h-full w-full object-cover" />
                     ) : (
                       member.username?.charAt(0).toUpperCase()
                     )}
-                    <span
-                      className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ${member.is_online ? "bg-[#22C55E]" : "bg-[#47565A]"}`}
-                      aria-label={member.is_online ? "En ligne" : "Déconnecté"}
-                    />
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-[#F1F5F2]">{displayName}</p>
-                    <p className={`text-xs ${member.is_online ? "text-[#4ADE80]" : "text-[#647276]"}`}>
-                      {member.is_online ? "En ligne" : "Déconnecté"}
-                    </p>
                   </div>
                 </div>
               );

@@ -29,6 +29,8 @@ class TaskPermission(permissions.BasePermission):
             user.is_staff
             or user.is_superuser
         ):
+            if getattr(view, "action", None) == "comments":
+                return request.method in permissions.SAFE_METHODS
             return True
 
         # ==================================================

@@ -40,6 +40,9 @@ function ProjectTaskBoard({
   error: tasksError,
   onTaskUpdated,
   showTaskOwners = true,
+  highlightedMemberId = null,
+  highlightedMemberName = "",
+  commentsReadOnly = false,
 }) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -63,6 +66,9 @@ function ProjectTaskBoard({
   const boardTasks = projectTasks.filter(
     (task) => selectedTaskIds.includes(Number(task.id))
   );
+  const highlightedTaskCount = highlightedMemberId === null
+    ? 0
+    : boardTasks.filter((task) => Number(task.assigned_to) === Number(highlightedMemberId)).length;
   const filteredTasks = boardTasks.filter((task) => {
     const searchValue = search.trim().toLocaleLowerCase("fr");
     const matchesSearch = [
@@ -156,6 +162,7 @@ function ProjectTaskBoard({
 
   const handleSubmitComment = async (event) => {
     event.preventDefault();
+    if (commentsReadOnly) return;
     const content = commentDraft.trim();
     if (!activeTask || !content || sendingComment) return;
 
@@ -239,8 +246,13 @@ function ProjectTaskBoard({
       <div className="mt-4 flex items-center gap-2">
         <ListTodo size={18} className="text-[#B6FF00]" />
         <span className="text-sm text-[#94A3A6]">
-          {filteredTasks.length} tâche(s) affichée(s) · {selectedTaskIds.length} sélectionnée(s)
+          {filteredTasks.length} tâche(s) affichée(s) · {boardTasks.length} dans le tableau
         </span>
+        {highlightedMemberId !== null && (
+          <span className="ml-auto rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-300">
+            {highlightedTaskCount} tâche(s) assignée(s) à {highlightedMemberName || "cet utilisateur"}
+          </span>
+        )}
       </div>
 
       {tasksError ? (
@@ -293,7 +305,7 @@ function ProjectTaskBoard({
                 {columnTasks.length === 0 ? (
                   <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-[#26363A] px-4 text-center text-sm text-[#647276]">
                     {boardTasks.length === 0
-                      ? "Sélectionnez des tâches dans la carte Tâches pour les ajouter au tableau"
+                      ? "Aucune tâche à afficher dans ce tableau"
                       : filteredTasks.length === 0
                         ? "Aucune tâche ne correspond aux filtres"
                         : "Déposer une tâche ici"}
@@ -301,6 +313,9 @@ function ProjectTaskBoard({
                 ) : columnTasks.map((task) => {
                   const isDone = task.status === "DONE";
                   const canDrag = canMoveTask(task) && updatingTaskId !== task.id;
+                  const isHighlighted = highlightedMemberId !== null
+                    && Number(task.assigned_to) === Number(highlightedMemberId);
+                  const isDimmed = highlightedMemberId !== null && !isHighlighted;
 
                   return (
                     <article
@@ -330,7 +345,9 @@ function ProjectTaskBoard({
                       title={canDrag ? "Glisser vers un statut pour déplacer la tâche" : undefined}
                       className={`rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:border-orange-300 hover:bg-[#FFF3EB] ${
                         canDrag ? "cursor-grab active:cursor-grabbing" : ""
-                      } ${draggedTaskId === task.id ? "opacity-50" : ""}`}
+                      } ${draggedTaskId === task.id ? "opacity-50" : ""} ${
+                        isHighlighted ? "border-orange-400 bg-orange-500/10 ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/10" : ""
+                      } ${isDimmed ? "opacity-45" : ""}`}
                     >
                       <div className="flex min-w-0 items-start gap-4">
                         {canDrag && (
@@ -432,7 +449,9 @@ function ProjectTaskBoard({
                 <p className="py-10 text-center text-sm text-[#647276]">Chargement des commentaires…</p>
               ) : taskComments.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-[#26363A] px-4 py-10 text-center text-sm text-[#647276]">
-                  Aucun commentaire pour cette tâche. Soyez le premier à commenter.
+                  {commentsReadOnly
+                    ? "Aucun commentaire pour cette tâche."
+                    : "Aucun commentaire pour cette tâche. Soyez le premier à commenter."}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -477,6 +496,7 @@ function ProjectTaskBoard({
               )}
             </div>
 
+            {!commentsReadOnly && (
             <form onSubmit={handleSubmitComment} className="border-t border-[#1C292D] p-4 sm:p-5">
               <label htmlFor="task-comment-draft" className="sr-only">Votre commentaire</label>
               <textarea
@@ -500,6 +520,7 @@ function ProjectTaskBoard({
                 </button>
               </div>
             </form>
+            )}
           </section>
         </div>
       )}

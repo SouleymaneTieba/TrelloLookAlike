@@ -81,6 +81,11 @@
 
 html {
   background: #050a0c;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
 }
 
 body {

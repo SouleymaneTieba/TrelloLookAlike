@@ -213,3 +213,27 @@ class TaskCommentAPITests(TestCase):
 
 		self.assertEqual(list_response.status_code, 404)
 		self.assertEqual(create_response.status_code, 404)
+
+	def test_admin_can_read_but_cannot_post_task_comments(self):
+		admin = User.objects.create_user(
+			username="admin",
+			email="admin@example.com",
+			is_staff=True,
+		)
+		TaskComment.objects.create(
+			task=self.task,
+			author=self.member,
+			content="Commentaire existant.",
+		)
+		self.client.force_authenticate(user=admin)
+
+		list_response = self.client.get(f"/api/tasks/{self.task.id}/comments/")
+		create_response = self.client.post(
+			f"/api/tasks/{self.task.id}/comments/",
+			{"content": "Commentaire admin"},
+			format="json",
+		)
+
+		self.assertEqual(list_response.status_code, 200)
+		self.assertEqual(len(list_response.data), 1)
+		self.assertEqual(create_response.status_code, 403)

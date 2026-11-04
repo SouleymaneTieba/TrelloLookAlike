@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   CalendarDays,
-  CheckCircle2,
   Edit3,
   FolderKanban,
   Layers3,
   Mail,
   Plus,
+  PanelRightClose,
+  PanelRightOpen,
   Phone,
   ListTodo,
   Search,
@@ -59,8 +60,9 @@ function Projects() {
   const [membersError, setMembersError] = useState("");
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [projectTasks, setProjectTasks] = useState([]);
-  const [boardTaskIds, setBoardTaskIds] = useState([]);
+  const [highlightedMemberId, setHighlightedMemberId] = useState(null);
   const [projectView, setProjectView] = useState("tasks");
+  const [membersSidebarOpen, setMembersSidebarOpen] = useState(true);
   const [projectFeatures, setProjectFeatures] = useState([]);
   const [projectRoles, setProjectRoles] = useState([]);
   const [updatingRoleMemberId, setUpdatingRoleMemberId] = useState(null);
@@ -86,7 +88,6 @@ function Projects() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deletingProjectId, setDeletingProjectId] = useState(null);
 
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
@@ -103,10 +104,8 @@ function Projects() {
     useState(initialForm);
 
   const associatedMembers = selectedProject?.member_details || [];
-  const projectManager = selectedProject?.member_details?.find((member) =>
-    selectedProject.project_manager_ids?.some(
-      (managerId) => Number(managerId) === Number(member.id)
-    )
+  const highlightedMember = associatedMembers.find(
+    (member) => Number(member.id) === Number(highlightedMemberId)
   );
   const projectProgress = (selectedProject?.task_count ?? 0) > 0
     ? Math.round(
@@ -152,7 +151,7 @@ function Projects() {
   const openProjectDetails = (project) => {
     setSelectedProject(project);
     setProjectView("tasks");
-    setBoardTaskIds([]);
+    setHighlightedMemberId(null);
     setSelectedFeature(null);
     setSelectedMemberId("");
     setMembersError("");
@@ -213,13 +212,12 @@ function Projects() {
 
     if (!selectedProject) {
       setProjectTasks([]);
-      setBoardTaskIds([]);
+      setHighlightedMemberId(null);
       setProjectFeatures([]);
       setProjectRoles([]);
       return undefined;
     }
     let isMounted = true;
-    setBoardTaskIds([]);
     setLoadingProjectTasks(true);
     setProjectTasksError("");
     Promise.all([
@@ -231,7 +229,6 @@ function Projects() {
         if (isMounted) {
           const tasks = tasksResponse.data.filter((task) => Number(task.project) === Number(selectedProject.id));
           setProjectTasks(tasks);
-          setBoardTaskIds(tasks.map((task) => Number(task.id)));
           setProjectFeatures(featuresResponse.data.filter((feature) => Number(feature.project) === Number(selectedProject.id)));
           setProjectRoles(membersResponse.data.roles || []);
         }
@@ -276,33 +273,6 @@ function Projects() {
     setEditingProject(null);
 
     setForm(initialForm);
-
-    setFormError("");
-
-    setShowModal(true);
-
-  };
-
-
-  // ==========================================
-  // OUVRIR MODIFICATION
-  // ==========================================
-
-  const handleOpenEdit = (project) => {
-
-    setEditingProject(project);
-
-    setForm({
-      name: project.name || "",
-      description:
-        project.description || "",
-      status:
-        project.status || "PLANNED",
-      start_date:
-        project.start_date || "",
-      end_date:
-        project.end_date || "",
-    });
 
     setFormError("");
 
@@ -572,9 +542,6 @@ function Projects() {
       setProjectTasks((previous) => previous.filter(
         (task) => Number(task.feature) !== Number(feature.id)
       ));
-      setBoardTaskIds((previous) => previous.filter(
-        (taskId) => !featureTasks.some((task) => Number(task.id) === taskId)
-      ));
       setSelectedFeature((current) => (
         Number(current?.id) === Number(feature.id) ? null : current
       ));
@@ -644,7 +611,6 @@ function Projects() {
         }
       } else {
         setProjectTasks((previous) => [data, ...previous]);
-        setBoardTaskIds((previous) => [...previous, Number(data.id)]);
         const completedDelta = Number(data.status === "DONE");
         const adjustCreatedFeature = (feature) => {
           if (!feature || Number(feature.id) !== Number(selectedFeature.id)) return feature;
@@ -695,7 +661,6 @@ function Projects() {
     try {
       await api.delete(`/tasks/${task.id}/`);
       setProjectTasks((previous) => previous.filter((item) => item.id !== task.id));
-      setBoardTaskIds((previous) => previous.filter((id) => id !== Number(task.id)));
       const totalDelta = -1;
       const completedDelta = task.status === "DONE" ? -1 : 0;
       const adjustDeletedFeature = (feature) => {
@@ -751,66 +716,6 @@ function Projects() {
         : project
     )));
   };
-
-  const toggleBoardTask = (taskId) => {
-    setBoardTaskIds((previous) => (
-      previous.includes(Number(taskId))
-        ? previous.filter((id) => id !== Number(taskId))
-        : [...previous, Number(taskId)]
-    ));
-  };
-
-
-  // ==========================================
-  // SUPPRIMER
-  // ==========================================
-
-  const handleDelete = async (project) => {
-
-    const confirmed =
-      window.confirm(
-        `Voulez-vous supprimer le projet "${project.name}" ?`
-      );
-
-
-    if (!confirmed) {
-      return;
-    }
-
-    setDeletingProjectId(project.id);
-    setError("");
-
-    try {
-
-      await api.delete(
-        `/projects/${project.id}/`
-      );
-
-
-      setProjects((previous) =>
-        previous.filter(
-          (item) =>
-            item.id !== project.id
-        )
-      );
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      setError(
-        "Impossible de supprimer ce projet."
-      );
-
-    } finally {
-
-      setDeletingProjectId(null);
-
-    }
-
-  };
-
 
   // ==========================================
   // LABEL STATUS
@@ -880,7 +785,12 @@ function Projects() {
 
   return (
 
-    <div>
+    <div className={selectedProject
+      ? membersSidebarOpen
+        ? "lg:pr-72"
+        : "lg:pr-[4.25rem]"
+      : ""}
+    >
 
 
       {/* ======================================
@@ -905,9 +815,16 @@ function Projects() {
               <p className="mb-2 text-sm font-medium text-[#B6FF00]">
                 Administration
               </p>
-              <h1 className="break-words text-3xl font-semibold text-[#F1F5F2]">
-                {selectedProject ? selectedProject.name : "Projets"}
-              </h1>
+              <div className="flex items-center justify-between gap-4">
+                <h1 className="min-w-0 break-words text-3xl font-semibold text-[#F1F5F2]">
+                  {selectedProject ? selectedProject.name : "Projets"}
+                </h1>
+                {selectedProject && (
+                  <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${getStatusClass(selectedProject.status)}`}>
+                    {selectedProject.status_label || getStatusLabel(selectedProject.status)}
+                  </span>
+                )}
+              </div>
               {!selectedProject && (
                 <p className="mt-2 text-[#94A3A6]">
                   Créez vos projets, puis ajoutez les membres depuis leurs détails.
@@ -922,9 +839,6 @@ function Projects() {
                 {selectedProject.description || "Aucune description pour ce projet."}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#94A3A6]">
-                <span className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusClass(selectedProject.status)}`}>
-                  {selectedProject.status_label || getStatusLabel(selectedProject.status)}
-                </span>
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarDays size={15} className="text-orange-500" />
                   Échéance : {selectedProject.end_date
@@ -938,9 +852,9 @@ function Projects() {
                 <span>{associatedMembers.length} membre(s)</span>
               </div>
               <div className="mt-3 flex items-center gap-3">
-                <div className="h-1.5 min-w-32 flex-1 overflow-hidden rounded-full bg-white">
+                <div className="h-2.5 min-w-32 flex-1 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm">
                   <div
-                    className="h-full rounded-full bg-orange-300 transition-all"
+                    className="h-full rounded-full bg-orange-500 transition-all"
                     style={{ width: `${projectProgress}%` }}
                   />
                 </div>
@@ -952,21 +866,6 @@ function Projects() {
           )}
         </div>
 
-        {selectedProject ? (
-          <div className="flex shrink-0 items-center gap-3 lg:pt-1">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#152400] text-sm font-semibold text-[#B6FF00]">
-              {projectManager ? getMemberInitials(projectManager) : "—"}
-            </span>
-            <span className="text-sm text-[#94A3A6]">
-              <span className="block text-xs text-[#647276]">Chef de projet</span>
-              {projectManager
-                ? [projectManager.first_name, projectManager.last_name]
-                    .filter(Boolean)
-                    .join(" ") || projectManager.username
-                : "Non défini"}
-            </span>
-          </div>
-        ) : null}
       </div>
 
 
@@ -1181,94 +1080,6 @@ function Projects() {
                 </p>
 
               </div>
-
-
-              {/* FOOTER */}
-
-              <div className="mt-6 flex items-center justify-between border-t border-[#1C292D] pt-4">
-
-                {project.member_details?.length > 0 ? (
-                  <div
-                    className="flex items-center gap-1"
-                    aria-label={`Membres du projet ${project.name}`}
-                  >
-                    {project.member_details.slice(0, 5).map((member) => {
-                      const memberName = [member.first_name, member.last_name]
-                        .filter(Boolean)
-                        .join(" ") || member.username;
-                      const memberRole = member.role_label || "Sans rôle";
-
-                      return (
-                        <span key={member.id} className="group/member relative">
-                          <span
-                            title={`${memberName} — ${memberRole}`}
-                            aria-label={`${memberName}, ${memberRole}`}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#152400] text-[10px] font-semibold text-[#B6FF00]"
-                          >
-                            {getMemberInitials(member)}
-                          </span>
-                          <span
-                            role="tooltip"
-                            className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 flex-col rounded-lg border border-[#1C292D] bg-[#10191C] px-3 py-2 text-left shadow-lg group-hover/member:flex"
-                          >
-                            <span className="text-xs font-semibold text-[#F1F5F2]">
-                              {memberName}
-                            </span>
-                            <span className="mt-0.5 text-[11px] text-[#94A3A6]">
-                              {memberRole}
-                            </span>
-                          </span>
-                        </span>
-                      );
-                    })}
-                    {project.member_details.length > 5 && (
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#10191C] text-[10px] font-semibold text-[#94A3A6]">
-                        +{project.member_details.length - 5}
-                      </span>
-                    )}
-                  </div>
-                ) : <span />}
-
-
-                <div className="flex items-center gap-1">
-
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleOpenEdit(project);
-                    }}
-                    className="rounded-lg p-2 text-[#647276] transition hover:bg-[#10191C] hover:text-[#B6FF00] disabled:cursor-not-allowed disabled:opacity-50"
-                    title="Modifier"
-                    aria-label={`Modifier le projet ${project.name}`}
-                    disabled={saving || deletingProjectId === project.id}
-                  >
-
-                    <Edit3 size={16} />
-
-                  </button>
-
-
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleDelete(project);
-                    }}
-                    className="rounded-lg p-2 text-[#647276] transition hover:bg-red-950/30 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    title="Supprimer"
-                    aria-label={`Supprimer le projet ${project.name}`}
-                    disabled={saving || deletingProjectId === project.id}
-                  >
-
-                    <Trash2 size={16} className={deletingProjectId === project.id ? "animate-pulse" : ""} />
-
-                  </button>
-
-                </div>
-
-              </div>
-
             </div>
 
             );
@@ -1283,141 +1094,69 @@ function Projects() {
       {/* DÉTAILS DU PROJET */}
 
       {selectedProject && (
-        <div className="mt-8">
-          <nav
-            aria-label="Navigation du projet"
-            role="tablist"
-            className="flex overflow-x-auto border-b border-[#1C292D]"
-          >
-            {[
-              { id: "tasks", label: "Tâches", count: projectTasks.length },
-              { id: "management", label: "Gestion de tâches" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={projectView === tab.id}
-                onClick={() => setProjectView(tab.id)}
-                className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-5 py-4 text-base font-semibold transition ${
-                  projectView === tab.id
-                    ? "border-orange-500 text-[#F1F5F2]"
-                    : "border-transparent text-[#94A3A6] hover:border-[#647276] hover:text-[#F1F5F2]"
-                }`}
+        <div className="mt-8 flex min-w-0 items-stretch">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3 border-b border-[#1C292D]">
+              <nav
+                aria-label="Navigation du projet"
+                role="tablist"
+                className="flex min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
               >
-                {tab.label}
-                {tab.count !== undefined && (
-                  <span className={`rounded px-2 py-0.5 text-xs ${
-                    projectView === tab.id
-                      ? "bg-orange-500 text-black"
-                      : "bg-[#10191C] text-[#94A3A6]"
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-
-          {projectView === "tasks" ? (
-            <div className="mt-5 min-w-0">
-              <ProjectTaskBoard
-                key={selectedProject.id}
-                project={selectedProject}
-                tasks={projectTasks}
-                selectedTaskIds={boardTaskIds}
-                loading={loadingProjectTasks}
-                error={projectTasksError}
-                onTaskUpdated={handleProjectTaskUpdated}
-              />
-            </div>
-          ) : (
-          <div className="mt-6 grid w-full items-stretch gap-5 xl:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]">
-
-              <section aria-labelledby="admin-project-members-title" className="flex h-[260px] min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-[#1C292D] bg-[#0B1215] p-4 sm:p-5">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 id="admin-project-members-title" className="text-base font-semibold text-[#F1F5F2]">
-                    Membres du projet
-                  </h3>
-                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-800">
-                    {associatedMembers.length}
-                  </span>
+                {[
+                  { id: "tasks", label: "Tâches", count: projectTasks.length },
+                  { id: "management", label: "Gestion des tâches" },
+                ].map((tab) => (
                   <button
+                    key={tab.id}
                     type="button"
-                    onClick={() => {
-                      setSelectedMemberId("");
-                      setMembersError("");
-                      setShowMemberPicker(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-2.5 py-2 text-xs font-semibold text-black transition hover:bg-orange-400"
+                    role="tab"
+                    aria-selected={projectView === tab.id}
+                    onClick={() => setProjectView(tab.id)}
+                    className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-5 py-4 text-base font-semibold transition ${
+                      projectView === tab.id
+                        ? "border-orange-500 text-[#F1F5F2]"
+                        : "border-transparent text-[#94A3A6] hover:border-[#647276] hover:text-[#F1F5F2]"
+                    }`}
                   >
-                    <Plus size={14} /> Ajouter
+                    {tab.label}
+                    {tab.count !== undefined && (
+                      <span className={`rounded px-2 py-0.5 text-xs ${
+                        projectView === tab.id
+                          ? "bg-orange-500 text-black"
+                          : "bg-[#10191C] text-[#94A3A6]"
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
                   </button>
-                </div>
+                ))}
+              </nav>
+            </div>
 
-                <div
-                  aria-label="Liste des membres du projet"
-                  tabIndex={0}
-                  className="min-h-0 flex-1 overflow-y-auto pr-1"
-                >
-                  {membersError && <p className="mb-3 text-sm text-red-400">{membersError}</p>}
+            {projectView === "tasks" ? (
+              <div className="mt-5 min-w-0">
+                <ProjectTaskBoard
+                  key={selectedProject.id}
+                  project={selectedProject}
+                  tasks={projectTasks}
+                  selectedTaskIds={projectTasks.map((task) => Number(task.id))}
+                  highlightedMemberId={highlightedMemberId}
+                  highlightedMemberName={
+                    [highlightedMember?.first_name, highlightedMember?.last_name]
+                      .filter(Boolean)
+                      .join(" ") || highlightedMember?.username
+                  }
+                  loading={loadingProjectTasks}
+                  error={projectTasksError}
+                  onTaskUpdated={handleProjectTaskUpdated}
+                  showTaskOwners={false}
+                  commentsReadOnly
+                />
+              </div>
+            ) : (
+          <div className="mt-6 grid w-full items-stretch gap-5 xl:grid-cols-2">
 
-                  {associatedMembers.length === 0 ? (
-                    <p className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#647276]">
-                      Aucun membre n’est associé à ce projet.
-                    </p>
-                  ) : (
-                    <div className="grid gap-2">
-                      {associatedMembers.map((member) => {
-                        const fullName = [member.first_name, member.last_name]
-                          .filter(Boolean)
-                          .join(" ");
-
-                        return (
-                          <div
-                            key={member.id}
-                            className="flex min-w-0 items-center gap-2 rounded-xl border border-[#1C292D] bg-[#0B1215] p-2 transition-colors hover:border-orange-300"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => handleOpenMemberProfile(member)}
-                              aria-label={`Afficher le profil de ${fullName || member.username}`}
-                              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            >
-                              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-100 text-sm font-semibold text-orange-800">
-                                {member.avatar ? (
-                                  <img src={member.avatar} alt="" className="h-full w-full object-cover" />
-                                ) : (
-                                  getMemberInitials(member)
-                                )}
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium text-[#F1F5F2]">{fullName || member.username}</span>
-                                <span className="block truncate text-xs text-[#647276]">{member.email || `@${member.username}`}</span>
-                              </span>
-                            </button>
-                            <div className="w-28 shrink-0">
-                              <label htmlFor={`project-member-role-${member.id}`} className="sr-only">Rôle de {fullName || member.username}</label>
-                              <select
-                                id={`project-member-role-${member.id}`}
-                                value={member.role_id || ""}
-                                onChange={(event) => handleUpdateMemberRole(member.id, event.target.value)}
-                                disabled={updatingRoleMemberId === member.id}
-                                className="w-full rounded-lg border border-[#1C292D] bg-[#10191C] px-2 py-2 text-xs text-[#F1F5F2] outline-none focus:border-orange-500 disabled:opacity-60"
-                              >
-                                <option value="">Sans rôle</option>
-                                {projectRoles.map((role) => <option key={role.id} value={role.id}>{role.label}</option>)}
-                              </select>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  </div>
-              </section>
-
-            <section aria-labelledby="admin-project-features-title" className="flex h-[260px] min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-[#1C292D] bg-[#0B1215] p-4 sm:p-5">
+            <section aria-labelledby="admin-project-features-title" className="flex min-w-0 flex-col rounded-3xl border border-[#1C292D] bg-[#0B1215] p-4 sm:p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 id="admin-project-features-title" className="flex items-center gap-2 text-base font-semibold text-[#F1F5F2]">
                   <Layers3 size={18} className="text-orange-500" /> Fonctionnalités
@@ -1443,7 +1182,7 @@ function Projects() {
               <div
                 aria-label="Liste des fonctionnalités du projet"
                 tabIndex={0}
-                className="min-h-0 flex-1 overflow-y-auto pr-1"
+                className="pr-1"
               >
                 {featureActionError && (
                   <p role="alert" className="mb-3 rounded-xl border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-400">
@@ -1513,13 +1252,12 @@ function Projects() {
               </div>
             </section>
 
-            <section aria-labelledby="admin-project-feature-tasks-title" className="flex h-[260px] min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-[#1C292D] bg-[#0B1215] p-4 sm:p-5">
+            <section aria-labelledby="admin-project-feature-tasks-title" className="flex min-w-0 flex-col rounded-3xl border border-[#1C292D] bg-[#0B1215] p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <h3 id="admin-project-feature-tasks-title" className="flex items-center gap-2 text-base font-semibold text-[#F1F5F2]">
                     <ListTodo size={18} className="text-orange-500" /> Tâches
                   </h3>
-                  {selectedFeature && <p className="mt-1 truncate text-sm text-[#94A3A6]">{selectedFeature.title}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {selectedFeature && (
@@ -1548,7 +1286,7 @@ function Projects() {
               <div
                 aria-label="Liste des tâches de la fonctionnalité"
                 tabIndex={0}
-                className="min-h-0 flex-1 overflow-y-auto pr-1"
+                className="pr-1"
               >
                 {taskActionError && <p className="mb-3 rounded-xl border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-400">{taskActionError}</p>}
 
@@ -1563,9 +1301,9 @@ function Projects() {
                 return featureTasks.length === 0 ? (
                   <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">Aucune tâche dans cette fonctionnalité.</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="grid w-full gap-3">
                     {featureTasks.map((task) => (
-                      <article key={task.id} className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
+                      <article key={task.id} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
@@ -1573,36 +1311,17 @@ function Projects() {
                               <span className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-300">{task.status_label || task.status}</span>
                             </div>
                             <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
-                              {task.description
-                                ? <p className="min-w-0 flex-1 whitespace-pre-wrap text-xs leading-5 text-[#647276]">{task.description}</p>
-                                : <span className="flex-1" />}
-                              {task.created_at && (
-                                <span className="shrink-0 text-[11px] text-[#647276]">
-                                  Créé le {new Date(task.created_at).toLocaleDateString("fr-FR")}
-                                </span>
+                              {task.description && (
+                                <p className="min-w-0 flex-1 whitespace-pre-wrap text-xs leading-5 text-[#647276]">{task.description}</p>
                               )}
                             </div>
-                            <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#94A3A6]">
+                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#94A3A6]">
                               <span>Priorité : {task.priority_label || task.priority}</span>
                               <span>Assignée à : {task.assigned_username || "Personne"}</span>
-                              {(task.end_date || task.deadline) && <span>Fin : {new Date(task.end_date ? `${task.end_date}T00:00:00` : task.deadline).toLocaleDateString("fr-FR")}</span>}
+                              {(task.end_date || task.deadline) && <span>Échéance : {new Date(task.end_date ? `${task.end_date}T00:00:00` : task.deadline).toLocaleDateString("fr-FR")}</span>}
                             </div>
                           </div>
                           <div className="flex shrink-0 items-center gap-1 self-center">
-                          <button
-                            type="button"
-                            aria-pressed={boardTaskIds.includes(Number(task.id))}
-                            onClick={() => toggleBoardTask(task.id)}
-                            aria-label={boardTaskIds.includes(Number(task.id)) ? `Retirer « ${task.title} » du tableau` : `Ajouter « ${task.title} » au tableau`}
-                            title={boardTaskIds.includes(Number(task.id)) ? "Retirer du tableau" : "Ajouter au tableau"}
-                            className={`flex h-7 w-7 items-center justify-center rounded-full transition ${
-                              boardTaskIds.includes(Number(task.id))
-                                ? "bg-orange-500/15 text-orange-300 hover:bg-red-500/15 hover:text-red-300"
-                                : "bg-orange-500 text-black hover:bg-orange-400"
-                            }`}
-                          >
-                            {boardTaskIds.includes(Number(task.id)) ? <CheckCircle2 size={16} /> : <Plus size={16} />}
-                          </button>
                           <button type="button" onClick={() => handleEditFeatureTask(task)} aria-label={`Modifier ${task.title}`} title="Modifier" className="rounded-lg p-1.5 text-[#94A3A6] hover:bg-[#1C292D] hover:text-orange-300">
                             <Edit3 size={14} />
                           </button>
@@ -1620,7 +1339,117 @@ function Projects() {
             </section>
 
           </div>
-          )}
+            )}
+          </div>
+
+          <aside
+            id="project-members-sidebar"
+            aria-label="Membres du projet"
+            style={{ width: membersSidebarOpen ? "min(18rem, 85vw)" : "4.25rem" }}
+            className={`fixed bottom-0 right-0 top-20 z-40 flex shrink-0 flex-col border-l border-[#1C292D] bg-[#0B1215] transition-[width] ${
+              membersSidebarOpen ? "" : "items-center"
+            }`}
+          >
+              <div className={`flex h-[68px] shrink-0 items-center border-b border-[#1C292D] ${
+                membersSidebarOpen ? "justify-between px-4" : "justify-center px-2"
+              }`}>
+                {membersSidebarOpen && (
+                  <div className="min-w-0">
+                    <h2 id="project-members-sidebar-title" className="truncate font-semibold text-[#F1F5F2]">
+                      Membres
+                    </h2>
+                    <p className="mt-1 text-xs text-[#647276]">
+                      {associatedMembers.filter((member) => member.is_active !== false).length} membre(s)
+                    </p>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  aria-expanded={membersSidebarOpen}
+                  aria-controls="project-members-sidebar-list"
+                  onClick={() => setMembersSidebarOpen((open) => !open)}
+                  title={membersSidebarOpen ? "Réduire les membres" : "Développer les membres"}
+                  aria-label={membersSidebarOpen ? "Réduire les membres" : "Développer les membres"}
+                  className="rounded-lg p-1.5 text-[#94A3A6] transition hover:bg-[#10191C] hover:text-white"
+                >
+                  {membersSidebarOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
+                </button>
+              </div>
+              <div
+                id="project-members-sidebar-list"
+                className={`flex-1 space-y-1 overflow-y-auto p-3 ${membersSidebarOpen ? "" : "hidden"}`}
+              >
+                  {membersError && <p className="mb-2 px-2 py-1 text-sm text-red-400">{membersError}</p>}
+                  {associatedMembers
+                    .filter((member) => member.is_active !== false)
+                    .map((member) => {
+                    const fullName = [member.first_name, member.last_name]
+                      .filter(Boolean)
+                      .join(" ");
+
+                    return (
+                      <div
+                        key={member.id}
+                        className={`flex items-center gap-2 rounded-xl px-2 py-2 transition ${
+                          Number(highlightedMemberId) === Number(member.id)
+                            ? "bg-orange-500/10 ring-1 ring-orange-500/50"
+                            : "hover:bg-[#10191C]"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleOpenMemberProfile(member)}
+                          aria-label={`Afficher le profil de ${fullName || member.username}`}
+                          title="Afficher le profil"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#152400] text-sm font-semibold text-[#B6FF00] focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        >
+                          {member.avatar ? (
+                            <img src={member.avatar} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            getMemberInitials(member).charAt(0)
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHighlightedMemberId((current) => (
+                            Number(current) === Number(member.id) ? null : member.id
+                          ))}
+                          aria-pressed={Number(highlightedMemberId) === Number(member.id)}
+                          aria-label={`Surligner les tâches de ${fullName || member.username}`}
+                          className="min-w-0 flex-1 truncate rounded-lg text-left text-sm font-medium text-[#F1F5F2] focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        >
+                          {fullName || member.username}
+                        </button>
+                        <label htmlFor={`project-member-role-${member.id}`} className="sr-only">Rôle de {fullName || member.username}</label>
+                        <select
+                          id={`project-member-role-${member.id}`}
+                          value={member.role_id || ""}
+                          onChange={(event) => handleUpdateMemberRole(member.id, event.target.value)}
+                          disabled={updatingRoleMemberId === member.id}
+                          className="max-w-28 shrink-0 rounded-lg border-0 bg-transparent py-1 pl-2 pr-6 text-right text-xs text-[#94A3A6] outline-none focus:ring-1 focus:ring-orange-500 disabled:opacity-60"
+                        >
+                          <option value="">Sans rôle</option>
+                          {projectRoles.map((role) => <option key={role.id} value={role.id}>{role.label}</option>)}
+                        </select>
+                      </div>
+                    );
+                  })}
+                  {associatedMembers.filter((member) => member.is_active !== false).length === 0 && (
+                    <p className="px-2 py-3 text-sm text-[#647276]">Aucun membre dans ce projet.</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedMemberId("");
+                      setMembersError("");
+                      setShowMemberPicker(true);
+                    }}
+                    className="mt-2 inline-flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-[#94A3A6] transition hover:bg-[#10191C] hover:text-[#F1F5F2]"
+                  >
+                    <Plus size={16} /> Ajouter un membre
+                  </button>
+              </div>
+          </aside>
         </div>
 
       )}
@@ -1734,9 +1563,7 @@ function Projects() {
                     <dd className="text-sm text-[#F1F5F2]">
                       {profileMember.is_active === false
                         ? "Inactif"
-                        : profileMember.is_online
-                          ? "En ligne"
-                          : "Actif"}
+                        : "Actif"}
                     </dd>
                   </div>
                 </div>
