@@ -237,3 +237,45 @@ class TaskCommentAPITests(TestCase):
 		self.assertEqual(list_response.status_code, 200)
 		self.assertEqual(len(list_response.data), 1)
 		self.assertEqual(create_response.status_code, 403)
+
+
+class TaskStatusAPITests(TestCase):
+
+	def setUp(self):
+		self.member = User.objects.create_user(
+			username="status_member",
+			email="status_member@example.com",
+		)
+		self.creator = User.objects.create_user(
+			username="status_creator",
+			email="status_creator@example.com",
+		)
+		self.project = Project.objects.create(name="Projet statut")
+		self.project.members.add(self.member, self.creator)
+		self.feature = Feature.objects.create(
+			project=self.project,
+			title="Fonctionnalité statut",
+		)
+		self.task = Task.objects.create(
+			title="Tâche à modifier",
+			project=self.project,
+			feature=self.feature,
+			assigned_to=self.creator,
+			created_by=self.creator,
+			status=Task.Status.TODO,
+		)
+		self.client = APIClient()
+
+	def test_project_member_can_update_task_status(self):
+		self.client.force_authenticate(user=self.member)
+
+		response = self.client.patch(
+			f"/api/tasks/{self.task.id}/",
+			{"status": Task.Status.IN_PROGRESS},
+			format="json",
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.task.refresh_from_db()
+		self.assertEqual(self.task.status, Task.Status.IN_PROGRESS)
+		self.assertEqual(self.task.assigned_to, self.creator)

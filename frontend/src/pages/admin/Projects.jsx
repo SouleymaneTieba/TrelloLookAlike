@@ -811,59 +811,76 @@ function Projects() {
                 <ArrowLeft size={18} />
               </button>
             )}
-            <div className="min-w-0">
-              <p className="mb-2 text-sm font-medium text-[#B6FF00]">
-                Administration
-              </p>
-              <div className="flex items-center justify-between gap-4">
-                <h1 className="min-w-0 break-words text-3xl font-semibold text-[#F1F5F2]">
-                  {selectedProject ? selectedProject.name : "Projets"}
-                </h1>
-                {selectedProject && (
-                  <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${getStatusClass(selectedProject.status)}`}>
-                    {selectedProject.status_label || getStatusLabel(selectedProject.status)}
-                  </span>
-                )}
-              </div>
+            <div className="min-w-0 flex-1">
               {!selectedProject && (
+                <p className="mb-2 text-sm font-medium text-[#B6FF00]">
+                  Administration
+                </p>
+              )}
+              {selectedProject ? (
+                <>
+                  <div className="-mx-1 overflow-x-auto px-1 pb-1">
+                    <div className="flex w-max min-w-full items-center gap-6">
+                      <div className="flex shrink-0 items-center gap-4">
+                        <h1
+                          title={selectedProject.name}
+                          className="max-w-[32rem] truncate text-2xl font-semibold text-[#F1F5F2]"
+                        >
+                          {selectedProject.name}
+                        </h1>
+                        <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${getStatusClass(selectedProject.status)}`}>
+                          {selectedProject.status_label || getStatusLabel(selectedProject.status)}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-6">
+                        <span className="shrink-0 whitespace-nowrap text-sm text-[#94A3A6]">
+                          <CalendarDays size={14} className="mr-1.5 inline text-orange-500" />
+                          Échéance : {selectedProject.end_date
+                            ? new Date(`${selectedProject.end_date}T00:00:00`).toLocaleDateString("fr-FR")
+                            : "Non définie"}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-sm text-[#94A3A6]">
+                          Début : {selectedProject.start_date
+                            ? new Date(`${selectedProject.start_date}T00:00:00`).toLocaleDateString("fr-FR")
+                            : "Non définie"}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-sm text-[#94A3A6]">
+                          Tâches : {selectedProject.completed_task_count ?? 0}/{selectedProject.task_count ?? 0}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-sm text-[#94A3A6]">
+                          Membres : {associatedMembers.length}
+                        </span>
+                      </div>
+                      <div className="flex min-w-48 flex-1 items-center gap-3">
+                        <div
+                          className="h-2.5 min-w-16 flex-1 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm"
+                          role="progressbar"
+                          aria-label={`Progression du projet ${selectedProject.name}`}
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                          aria-valuenow={projectProgress}
+                        >
+                          <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${projectProgress}%` }} />
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold text-orange-400">
+                          Progression {projectProgress}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h1 className="min-w-0 break-words text-3xl font-semibold text-[#F1F5F2]">
+                    Projets
+                  </h1>
                 <p className="mt-2 text-[#94A3A6]">
                   Créez vos projets, puis ajoutez les membres depuis leurs détails.
                 </p>
+                </>
               )}
             </div>
           </div>
-
-          {selectedProject && (
-            <div className="mt-3 pl-12">
-              <p className="line-clamp-2 text-sm text-[#94A3A6]">
-                {selectedProject.description || "Aucune description pour ce projet."}
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#94A3A6]">
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays size={15} className="text-orange-500" />
-                  Échéance : {selectedProject.end_date
-                    ? new Date(`${selectedProject.end_date}T00:00:00`).toLocaleDateString("fr-FR")
-                    : "Non définie"}
-                </span>
-                <span>Début : {selectedProject.start_date
-                  ? new Date(`${selectedProject.start_date}T00:00:00`).toLocaleDateString("fr-FR")
-                  : "Non définie"}</span>
-                <span>{selectedProject.completed_task_count ?? 0}/{selectedProject.task_count ?? 0} tâche(s) terminée(s)</span>
-                <span>{associatedMembers.length} membre(s)</span>
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-2.5 min-w-32 flex-1 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm">
-                  <div
-                    className="h-full rounded-full bg-orange-500 transition-all"
-                    style={{ width: `${projectProgress}%` }}
-                  />
-                </div>
-                <span className="text-xs font-semibold text-orange-400">
-                  Progression {projectProgress}%
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
       </div>

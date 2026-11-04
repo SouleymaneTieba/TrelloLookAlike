@@ -6,9 +6,6 @@ import {
   CheckCircle2,
   Clock3,
   FolderKanban,
-  Layers3,
-  ListTodo,
-  Plus,
   Search,
   Users,
 } from "lucide-react";
@@ -33,21 +30,8 @@ function Projects() {
     useState(null);
 
   const [projectTasks, setProjectTasks] = useState([]);
-  const [boardTaskIds, setBoardTaskIds] = useState([]);
-  const [projectFeatures, setProjectFeatures] = useState([]);
-  const [selectedFeature, setSelectedFeature] = useState(null);
   const [loadingProjectTasks, setLoadingProjectTasks] = useState(false);
   const [projectTasksError, setProjectTasksError] = useState("");
-
-  const getMemberInitials = (member) => {
-    const nameParts = [member.first_name, member.last_name].filter(Boolean);
-    const initials = nameParts.length
-      ? nameParts.map((part) => part[0]).join("")
-      : (member.username || "?").slice(0, 2);
-
-    return initials.toLocaleUpperCase("fr");
-  };
-
 
   // ==========================================
   // CHARGER LES PROJETS
@@ -95,11 +79,6 @@ function Projects() {
       (value || "").toLocaleLowerCase("fr").includes(normalizedSearch)
     )
   );
-  const projectManager = selectedProject?.member_details?.find((member) =>
-    selectedProject.project_manager_ids?.some(
-      (managerId) => Number(managerId) === Number(member.id)
-    )
-  );
   const projectProgress = (selectedProject?.task_count ?? 0) > 0
     ? Math.round(
         ((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100
@@ -112,25 +91,18 @@ function Projects() {
 
     if (!selectedProjectId) {
       setProjectTasks([]);
-      setBoardTaskIds([]);
-      setProjectFeatures([]);
-      setSelectedFeature(null);
       setProjectTasksError("");
       return;
     }
 
     let isMounted = true;
-    setBoardTaskIds([]);
-    setSelectedFeature(null);
     setLoadingProjectTasks(true);
     setProjectTasksError("");
 
-    Promise.all([api.get("/tasks/"), api.get("/features/")])
-      .then(([tasksResponse, featuresResponse]) => {
+    api.get("/tasks/")
+      .then((tasksResponse) => {
         if (isMounted) {
           setProjectTasks(tasksResponse.data.filter((task) => Number(task.project) === Number(selectedProjectId)));
-          setProjectFeatures(featuresResponse.data.filter((feature) => Number(feature.project) === Number(selectedProjectId)));
-          setSelectedFeature(null);
         }
       })
       .catch((requestError) => {
@@ -158,20 +130,6 @@ function Projects() {
     const completedDelta = Number(updatedTask.status === "DONE") - Number(previousTask.status === "DONE");
     if (!completedDelta) return;
 
-    const updateFeatureProgress = (feature) => {
-      if (!feature || Number(feature.id) !== Number(updatedTask.feature)) return feature;
-      const completed_subtask_count = Math.max(0, (feature.completed_subtask_count || 0) + completedDelta);
-      return {
-        ...feature,
-        completed_subtask_count,
-        progress: feature.subtask_count
-          ? Math.round(completed_subtask_count * 100 / feature.subtask_count)
-          : 0,
-      };
-    };
-
-    setProjectFeatures((previous) => previous.map(updateFeatureProgress));
-    setSelectedFeature(updateFeatureProgress);
     setSelectedProject((project) => project
       ? { ...project, completed_task_count: Math.max(0, (project.completed_task_count || 0) + completedDelta) }
       : project
@@ -182,15 +140,6 @@ function Projects() {
         : project
     )));
   };
-
-  const toggleBoardTask = (taskId) => {
-    setBoardTaskIds((previous) => (
-      previous.includes(Number(taskId))
-        ? previous.filter((id) => id !== Number(taskId))
-        : [...previous, Number(taskId)]
-    ));
-  };
-
 
   // ==========================================
   // STATUS
@@ -294,72 +243,76 @@ function Projects() {
                 <ArrowLeft size={18} />
               </button>
             )}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="mb-2 text-sm font-medium text-[#B6FF00]">
                 {selectedProject ? "Détails du projet" : "Espace de travail"}
               </p>
-              <h1 className="break-words text-3xl font-semibold text-[#F1F5F2]">
-                {selectedProject?.name || "Projets"}
-              </h1>
-              {!selectedProject && (
+              {selectedProject ? (
+                <>
+                  <div className="-mx-1 overflow-x-auto px-1 pb-1">
+                    <div className="flex w-max min-w-full items-center gap-6">
+                      <div className="flex shrink-0 items-center gap-4">
+                        <h1
+                          title={selectedProject.description || selectedProject.name}
+                          className="max-w-[32rem] truncate text-2xl font-semibold text-[#F1F5F2]"
+                        >
+                          {selectedProject.name}
+                        </h1>
+                        <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${getStatusStyle(selectedProject.status)}`}>
+                          {selectedProject.status_label || selectedProject.status}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-6">
+                        <span className="shrink-0 whitespace-nowrap text-sm text-[#94A3A6]">
+                          <CalendarDays size={14} className="mr-1.5 inline text-orange-500" />
+                          Échéance : {selectedProject.end_date
+                            ? new Date(`${selectedProject.end_date}T00:00:00`).toLocaleDateString("fr-FR")
+                            : "Non définie"}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-sm text-[#94A3A6]">
+                          Début : {selectedProject.start_date
+                            ? new Date(`${selectedProject.start_date}T00:00:00`).toLocaleDateString("fr-FR")
+                            : "Non définie"}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-sm text-[#94A3A6]">
+                          Tâches : {selectedProject.completed_task_count ?? 0}/{selectedProject.task_count ?? 0}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-sm text-[#94A3A6]">
+                          Membres : {selectedProject.member_details?.length ?? selectedProject.members?.length ?? 0}
+                        </span>
+                      </div>
+                      <div className="flex min-w-48 flex-1 items-center gap-3">
+                        <div
+                          className="h-2.5 min-w-16 flex-1 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm"
+                          role="progressbar"
+                          aria-label={`Progression du projet ${selectedProject.name}`}
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                          aria-valuenow={projectProgress}
+                        >
+                          <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${projectProgress}%` }} />
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold text-orange-400">
+                          Progression {projectProgress}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h1 className="min-w-0 break-words text-3xl font-semibold text-[#F1F5F2]">
+                    Projets
+                  </h1>
                 <p className="mt-2 text-[#94A3A6]">
                   Consultez les projets auxquels vous participez.
                 </p>
+                </>
               )}
             </div>
           </div>
-
-          {selectedProject && (
-            <div className="mt-3 pl-12">
-              <p className="line-clamp-2 text-sm text-[#94A3A6]">
-                {selectedProject.description || "Aucune description pour ce projet."}
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#94A3A6]">
-                <span className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusStyle(selectedProject.status)}`}>
-                  {selectedProject.status_label || selectedProject.status}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays size={15} className="text-orange-500" />
-                  Échéance : {selectedProject.end_date
-                    ? new Date(`${selectedProject.end_date}T00:00:00`).toLocaleDateString("fr-FR")
-                    : "Non définie"}
-                </span>
-                <span>Début : {selectedProject.start_date
-                  ? new Date(`${selectedProject.start_date}T00:00:00`).toLocaleDateString("fr-FR")
-                  : "Non définie"}</span>
-                <span>{selectedProject.completed_task_count ?? 0}/{selectedProject.task_count ?? 0} tâche(s) terminée(s)</span>
-                <span>{selectedProject.member_details?.length ?? selectedProject.members?.length ?? 0} membre(s)</span>
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-1.5 min-w-32 flex-1 overflow-hidden rounded-full bg-white">
-                  <div
-                    className="h-full rounded-full bg-orange-300 transition-all"
-                    style={{ width: `${projectProgress}%` }}
-                  />
-                </div>
-                <span className="text-xs font-semibold text-orange-400">
-                  Progression {projectProgress}%
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
-        {selectedProject && (
-          <div className="flex shrink-0 items-center gap-3 lg:pt-1">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#152400] text-sm font-semibold text-[#B6FF00]">
-              {projectManager ? getMemberInitials(projectManager) : "—"}
-            </span>
-            <span className="text-sm text-[#94A3A6]">
-              <span className="block text-xs text-[#647276]">Chef de projet</span>
-              {projectManager
-                ? [projectManager.first_name, projectManager.last_name]
-                    .filter(Boolean)
-                    .join(" ") || projectManager.username
-                : "Non défini"}
-            </span>
-          </div>
-        )}
       </div>
 
 
@@ -575,10 +528,7 @@ function Projects() {
                     type="button"
                     key={project.id}
                     className="group w-full cursor-pointer rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 text-left transition hover:-translate-y-0.5 hover:border-[#304800] focus:outline-none focus:ring-2 focus:ring-[#B6FF00]"
-                    onClick={() => {
-                      setBoardTaskIds([]);
-                      setSelectedProject(project);
-                    }}
+                    onClick={() => setSelectedProject(project)}
                   >
 
 
@@ -714,54 +664,6 @@ function Projects() {
 
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      {project.member_details?.length > 0 ? (
-                        <div
-                          className="flex items-center gap-1"
-                          aria-label={`Membres du projet ${project.name}`}
-                        >
-                          {project.member_details.slice(0, 5).map((member) => {
-                            const memberName = [member.first_name, member.last_name]
-                              .filter(Boolean)
-                              .join(" ") || member.username;
-                            const memberRole = member.role_label || "Sans rôle";
-
-                            return (
-                              <span key={member.id} className="group/member relative">
-                                <span
-                                  title={`${memberName} — ${memberRole}`}
-                                  aria-label={`${memberName}, ${memberRole}`}
-                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#152400] text-[10px] font-semibold text-[#B6FF00]"
-                                >
-                                  {getMemberInitials(member)}
-                                </span>
-                                <span
-                                  role="tooltip"
-                                  className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 flex-col rounded-lg border border-[#1C292D] bg-[#10191C] px-3 py-2 text-left shadow-lg group-hover/member:flex"
-                                >
-                                  <span className="text-xs font-semibold text-[#F1F5F2]">
-                                    {memberName}
-                                  </span>
-                                  <span className="mt-0.5 text-[11px] text-[#94A3A6]">
-                                    {memberRole}
-                                  </span>
-                                </span>
-                              </span>
-                            );
-                          })}
-                          {project.member_details.length > 5 && (
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#10191C] text-[10px] font-semibold text-[#94A3A6]">
-                              +{project.member_details.length - 5}
-                            </span>
-                          )}
-                        </div>
-                      ) : <span />}
-
-                      <p className="text-right text-xs font-medium text-orange-400">
-                        Cliquer pour voir tous les détails →
-                      </p>
-                    </div>
-
                   </button>
 
                 );
@@ -776,128 +678,17 @@ function Projects() {
       </div>
 
       {selectedProject && (
-        <div className="mt-8">
-          <div className="grid gap-5 lg:grid-cols-2">
-            <section aria-labelledby="project-features-title" className="flex h-[240px] min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-[#26363A] bg-[#10191C] p-5 shadow-2xl sm:p-6">
-              <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
-                <h3 id="project-features-title" className="flex items-center gap-2 text-base font-semibold text-[#F1F5F2]"><Layers3 size={18} className="text-orange-500" /> Fonctionnalités</h3>
-                <span className="rounded-full bg-[#0B1215] px-2.5 py-1 text-xs text-[#94A3A6]">{projectFeatures.length}</span>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              {loadingProjectTasks ? (
-                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Chargement des fonctionnalités...</p>
-              ) : projectTasksError ? (
-                <p className="rounded-xl border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-400">{projectTasksError}</p>
-              ) : projectFeatures.length === 0 ? (
-                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Aucune fonctionnalité pour ce projet.</p>
-              ) : (
-                <div className="grid w-full gap-3">
-                  {projectFeatures.map((feature) => (
-                    <button
-                      key={feature.id}
-                      type="button"
-                      onClick={() => setSelectedFeature(feature)}
-                      aria-pressed={Number(selectedFeature?.id) === Number(feature.id)}
-                      className={`w-full rounded-xl border p-3 text-left transition ${Number(selectedFeature?.id) === Number(feature.id) ? "border-orange-500 bg-orange-500/10" : "border-[#1C292D] bg-[#0B1215] hover:border-orange-500/60 hover:bg-[#10191C]"}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-400"><Layers3 size={18} /></span>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="truncate font-semibold text-[#F1F5F2]">{feature.title}</h4>
-                          <p className="truncate text-xs text-[#647276]">{feature.completed_subtask_count}/{feature.subtask_count} tâches terminées</p>
-                        </div>
-                        <div className="w-32 shrink-0">
-                          <span className="block text-right text-xs font-semibold text-orange-300">{feature.progress}%</span>
-                          <div className="mt-1 h-2.5 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm"><div className="h-full rounded-full bg-orange-500" style={{ width: `${feature.progress}%` }} /></div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              </div>
-            </section>
-
-            <section aria-labelledby="project-feature-tasks-title" className="flex h-[240px] min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-[#26363A] bg-[#10191C] p-5 shadow-2xl sm:p-6">
-              <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 id="project-feature-tasks-title" className="flex items-center gap-2 text-base font-semibold text-[#F1F5F2]"><ListTodo size={18} className="text-orange-500" /> Tâches</h3>
-                  {selectedFeature && <p className="mt-1 truncate text-sm text-[#94A3A6]">{selectedFeature.title}</p>}
-                </div>
-                {selectedFeature && <span className="rounded-full bg-[#0B1215] px-2.5 py-1 text-xs text-[#94A3A6]">{projectTasks.filter((task) => Number(task.feature) === Number(selectedFeature.id)).length}</span>}
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              {loadingProjectTasks ? (
-                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Chargement des tâches...</p>
-              ) : projectTasksError ? (
-                <p className="rounded-xl border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-400">{projectTasksError}</p>
-              ) : !selectedFeature ? (
-                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Sélectionnez une fonctionnalité pour voir ses tâches.</p>
-              ) : projectTasks.filter((task) => Number(task.feature) === Number(selectedFeature.id)).length === 0 ? (
-                <p className="rounded-xl border border-[#1C292D] bg-[#0B1215] p-4 text-sm text-[#647276]">Aucune tâche dans cette fonctionnalité.</p>
-              ) : (
-                <div className="space-y-3">
-                  {projectTasks.filter((task) => Number(task.feature) === Number(selectedFeature.id)).map((task) => (
-                    <article
-                      key={task.id}
-                      className="w-full rounded-xl border border-[#1C292D] bg-[#0B1215] p-3 text-left transition hover:border-orange-500/60 hover:bg-[#10191C]"
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-medium text-[#F1F5F2]">{task.title}</h4>
-                          <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
-                            {task.description
-                              ? <p className="min-w-0 flex-1 whitespace-pre-wrap text-xs leading-5 text-[#647276]">{task.description}</p>
-                              : <span className="flex-1" />}
-                            {task.created_at && (
-                              <span className="shrink-0 text-[11px] text-[#647276]">
-                                Créé le {new Date(task.created_at).toLocaleDateString("fr-FR")}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1">
-                          <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${task.status === "DONE" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-orange-500/30 bg-orange-500/10 text-orange-300"}`}>{task.status_label || task.status}</span>
-                          <button
-                            type="button"
-                            aria-pressed={boardTaskIds.includes(Number(task.id))}
-                            onClick={() => toggleBoardTask(task.id)}
-                            aria-label={boardTaskIds.includes(Number(task.id)) ? `Retirer « ${task.title} » du tableau` : `Ajouter « ${task.title} » au tableau`}
-                            title={boardTaskIds.includes(Number(task.id)) ? "Retirer du tableau" : "Ajouter au tableau"}
-                            className={`flex h-7 w-7 items-center justify-center rounded-full transition ${
-                              boardTaskIds.includes(Number(task.id))
-                                ? "bg-orange-500/15 text-orange-300 hover:bg-red-500/15 hover:text-red-300"
-                                : "bg-orange-500 text-black hover:bg-orange-400"
-                            }`}
-                          >
-                            {boardTaskIds.includes(Number(task.id)) ? <CheckCircle2 size={16} /> : <Plus size={16} />}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#94A3A6]">
-                        <span>Priorité : {task.priority_label || task.priority}</span>
-                        {(task.end_date || task.deadline) && <span>Échéance : {new Date(task.end_date ? `${task.end_date}T00:00:00` : task.deadline).toLocaleDateString("fr-FR")}</span>}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-              </div>
-            </section>
-          </div>
-
-          <div className="mt-8">
-            <ProjectTaskBoard
-              key={selectedProject.id}
-              project={selectedProject}
-              tasks={projectTasks}
-              selectedTaskIds={boardTaskIds}
-              loading={loadingProjectTasks}
-              error={projectTasksError}
-              onTaskUpdated={handleProjectTaskUpdated}
-              showTaskOwners={false}
-            />
-          </div>
+        <div className="mt-8 min-w-0">
+          <ProjectTaskBoard
+            key={selectedProject.id}
+            project={selectedProject}
+            tasks={projectTasks}
+            selectedTaskIds={projectTasks.map((task) => Number(task.id))}
+            loading={loadingProjectTasks}
+            error={projectTasksError}
+            onTaskUpdated={handleProjectTaskUpdated}
+            showTaskOwners={false}
+          />
         </div>
       )}
 

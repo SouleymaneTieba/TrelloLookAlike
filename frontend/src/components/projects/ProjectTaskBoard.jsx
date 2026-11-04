@@ -102,13 +102,8 @@ function ProjectTaskBoard({
       || Number(task.created_by) === Number(user?.id);
   };
 
-  const handleDrop = async (event, status) => {
-    event.preventDefault();
-    setDragOverStatus(null);
-    const taskId = event.dataTransfer.getData("text/plain") || String(draggedTaskId || "");
-    const task = boardTasks.find((item) => String(item.id) === taskId);
-
-    if (!task || task.status === status || !canMoveTask(task) || updatingTaskId !== null) {
+  const updateTaskStatus = async (task, status) => {
+    if (!canMoveTask(task) || task.status === status || updatingTaskId !== null) {
       return;
     }
 
@@ -120,11 +115,21 @@ function ProjectTaskBoard({
       onTaskUpdated(task, data);
     } catch (requestError) {
       console.error(requestError);
-      setError("Impossible de modifier le statut de la tâche.");
+      const messages = Object.values(requestError.response?.data || {}).flat().join(" ");
+      setError(messages || "Impossible de modifier le statut de la tâche.");
     } finally {
       setUpdatingTaskId(null);
       setDraggedTaskId(null);
     }
+  };
+
+  const handleDrop = async (event, status) => {
+    event.preventDefault();
+    setDragOverStatus(null);
+    const taskId = event.dataTransfer.getData("text/plain") || String(draggedTaskId || "");
+    const task = boardTasks.find((item) => String(item.id) === taskId);
+
+    if (task) await updateTaskStatus(task, status);
   };
 
   const handleOpenComments = async (task) => {

@@ -259,6 +259,14 @@ class TaskSerializer(serializers.ModelSerializer):
 
         attrs["project"] = project
 
+        if (
+            self.instance
+            and request.method in ["PUT", "PATCH"]
+            and "status" in request.data
+            and set(request.data.keys()) <= {"status"}
+        ):
+            return attrs
+
         # ==========================================
         # CHEF DE PROJET ?
         # ==========================================
