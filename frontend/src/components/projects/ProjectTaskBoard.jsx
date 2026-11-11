@@ -52,6 +52,7 @@ function ProjectTaskBoard({
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverStatus, setDragOverStatus] = useState(null);
   const [error, setError] = useState("");
+  const [detailTaskId, setDetailTaskId] = useState(null);
   const [activeTask, setActiveTask] = useState(null);
   const [taskComments, setTaskComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -66,6 +67,7 @@ function ProjectTaskBoard({
   const boardTasks = projectTasks.filter(
     (task) => selectedTaskIds.includes(Number(task.id))
   );
+  const detailTask = boardTasks.find((task) => Number(task.id) === Number(detailTaskId));
   const highlightedTaskCount = highlightedMemberId === null
     ? 0
     : boardTasks.filter((task) => Number(task.assigned_to) === Number(highlightedMemberId)).length;
@@ -274,7 +276,7 @@ function ProjectTaskBoard({
         </p>
       )}
 
-      {!tasksError && !loading && <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+      {!tasksError && !loading && <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {COLUMNS.map((column) => {
           const columnTasks = filteredTasks.filter((task) => task.status === column.status);
 
@@ -293,7 +295,7 @@ function ProjectTaskBoard({
                 }
               }}
               onDrop={(event) => handleDrop(event, column.status)}
-              className={`min-h-52 rounded-2xl border p-3 transition-colors ${
+              className={`rounded-2xl border p-3 transition-colors ${
                 dragOverStatus === column.status
                   ? "border-[#B6FF00] bg-[#152400]"
                   : "border-[#1C292D] bg-[#0B1215]"
@@ -306,9 +308,9 @@ function ProjectTaskBoard({
                 </span>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {columnTasks.length === 0 ? (
-                  <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-[#26363A] px-4 text-center text-sm text-[#647276]">
+                  <div className="flex min-h-12 items-center justify-center rounded-xl border border-dashed border-[#26363A] px-3 py-2 text-center text-sm text-[#647276]">
                     {boardTasks.length === 0
                       ? "Aucune tâche à afficher dans ce tableau"
                       : filteredTasks.length === 0
@@ -318,6 +320,7 @@ function ProjectTaskBoard({
                 ) : columnTasks.map((task) => {
                   const isDone = task.status === "DONE";
                   const canDrag = canMoveTask(task) && updatingTaskId !== task.id;
+                  const taskDate = task.end_date || task.deadline;
                   const isHighlighted = highlightedMemberId !== null
                     && Number(task.assigned_to) === Number(highlightedMemberId);
                   const isDimmed = highlightedMemberId !== null && !isHighlighted;
@@ -347,60 +350,44 @@ function ProjectTaskBoard({
                         setDraggedTaskId(null);
                         setDragOverStatus(null);
                       }}
-                      title={canDrag ? "Glisser vers un statut pour déplacer la tâche" : undefined}
-                      className={`rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 transition hover:border-orange-300 hover:bg-[#FFF3EB] ${
+                      onClick={() => setDetailTaskId(task.id)}
+                      title={canDrag ? "Cliquer pour afficher les détails · Glisser pour déplacer" : "Cliquer pour afficher les détails"}
+                      className={`rounded-xl border border-[#1C292D] bg-[#0B1215] p-1 transition hover:border-orange-300 hover:bg-[#FFF3EB] ${
                         canDrag ? "cursor-grab active:cursor-grabbing" : ""
                       } ${draggedTaskId === task.id ? "opacity-50" : ""} ${
                         isHighlighted ? "border-orange-400 bg-orange-500/10 ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/10" : ""
                       } ${isDimmed ? "opacity-45" : ""}`}
                     >
-                      <div className="flex min-w-0 items-start gap-4">
+                      <div className="flex min-w-0 items-center gap-2">
                         {canDrag && (
-                          <GripVertical size={20} className="mt-1 shrink-0 text-[#647276]" aria-hidden="true" />
+                          <GripVertical size={16} className="shrink-0 text-[#647276]" aria-hidden="true" />
                         )}
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <h5 className={`font-semibold ${isDone ? "text-[#647276] line-through" : "text-[#F1F5F2]"}`}>
-                              {task.title}
-                            </h5>
-                            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${STATUS_STYLES[task.status] || STATUS_STYLES.TODO}`}>
-                              {STATUS_LABELS[task.status] || task.status}
-                            </span>
-                          </div>
-
-                          {task.description && (
-                            <p className="mt-2 line-clamp-2 text-sm text-[#647276]">{task.description}</p>
-                          )}
-
-                          <div className="mt-3 flex items-end justify-between gap-3">
-                            <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[#647276]">
-                              {showTaskOwners && (
-                                <>
-                                  <span>Projet : <span className="text-[#94A3A6]">{project.name}</span></span>
-                                  <span>Assignée à : <span className="text-[#94A3A6]">{task.assigned_username || "Non assignée"}</span></span>
-                                  <span>Créée par : <span className="text-[#94A3A6]">{task.created_by_username || "Inconnu"}</span></span>
-                                </>
-                              )}
-                              <span className="flex items-center gap-1.5">
-                                <CalendarDays size={14} />
-                                {showTaskOwners && task.start_date && <>Début : {formatDate(task.start_date)} · </>}
-                                {formatDate(task.end_date || task.deadline)}
-                              </span>
-                              <span className="flex items-center gap-2">
-                                <span className="text-[#647276]">Priorité</span>
-                                <span className={`font-semibold ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.MEDIUM}`}>
-                                  {task.priority_label || task.priority}
-                                </span>
-                              </span>
-                            </div>
+                          <div className="flex min-w-0 items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => handleOpenComments(task)}
+                              onClick={() => setDetailTaskId(task.id)}
+                              className={`min-w-0 flex-1 truncate text-left text-sm font-semibold hover:text-orange-300 ${isDone ? "text-[#647276] line-through" : "text-[#F1F5F2]"}`}
+                            >
+                              {task.title}
+                            </button>
+                            {taskDate && (
+                              <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#94A3A6]">
+                                <CalendarDays size={12} aria-hidden="true" />
+                                Échéance : {formatDate(taskDate)}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleOpenComments(task);
+                              }}
                               aria-label={`Afficher les commentaires de ${task.title}`}
                               title="Commentaires"
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#94A3A6] transition hover:bg-orange-500/10 hover:text-orange-300"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#94A3A6] transition hover:bg-orange-500/10 hover:text-orange-300"
                             >
-                              <MessageCircle size={17} />
+                              <MessageCircle size={15} />
                             </button>
                           </div>
                         </div>
@@ -413,6 +400,96 @@ function ProjectTaskBoard({
           );
         })}
       </div>}
+
+      {detailTask && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+          role="presentation"
+          onClick={() => setDetailTaskId(null)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="task-details-title"
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#1C292D] bg-[#0B1215] shadow-2xl"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-[#1C292D] px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-orange-400">Détails de la tâche</p>
+                <h3 id="task-details-title" className="mt-1 break-words text-lg font-semibold text-[#F1F5F2]">
+                  {detailTask.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailTaskId(null)}
+                aria-label="Fermer les détails de la tâche"
+                className="rounded-lg p-2 text-[#647276] transition hover:bg-[#10191C] hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <div className="space-y-5 p-5 sm:p-6">
+              {detailTask.description && (
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold text-[#94A3A6]">Description</h4>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-6 text-[#CBD5D7]">
+                    {detailTask.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <span className={`rounded-full border px-3 py-1 text-xs font-medium ${STATUS_STYLES[detailTask.status] || STATUS_STYLES.TODO}`}>
+                  {STATUS_LABELS[detailTask.status] || detailTask.status}
+                </span>
+                <span className={`rounded-full border border-[#1C292D] bg-[#10191C] px-3 py-1 text-xs font-semibold ${PRIORITY_STYLES[detailTask.priority] || PRIORITY_STYLES.MEDIUM}`}>
+                  Priorité : {detailTask.priority_label || detailTask.priority}
+                </span>
+              </div>
+
+              <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                {showTaskOwners && (
+                  <>
+                    <div>
+                      <dt className="text-xs text-[#647276]">Projet</dt>
+                      <dd className="mt-1 text-[#CBD5D7]">{detailTask.project_name || project.name}</dd>
+                    </div>
+                    {detailTask.feature_title && (
+                      <div>
+                        <dt className="text-xs text-[#647276]">Fonctionnalité</dt>
+                        <dd className="mt-1 text-[#CBD5D7]">{detailTask.feature_title}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt className="text-xs text-[#647276]">Assignée à</dt>
+                      <dd className="mt-1 text-[#CBD5D7]">{detailTask.assigned_username || "Non assignée"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-[#647276]">Créée par</dt>
+                      <dd className="mt-1 text-[#CBD5D7]">{detailTask.created_by_username || "Inconnu"}</dd>
+                    </div>
+                  </>
+                )}
+                {detailTask.start_date && (
+                  <div>
+                    <dt className="text-xs text-[#647276]">Date de début</dt>
+                    <dd className="mt-1 text-[#CBD5D7]">{formatDate(detailTask.start_date)}</dd>
+                  </div>
+                )}
+                {(detailTask.end_date || detailTask.deadline) && (
+                  <div>
+                    <dt className="text-xs text-[#647276]">Date de fin</dt>
+                    <dd className="mt-1 text-[#CBD5D7]">{formatDate(detailTask.end_date || detailTask.deadline)}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          </section>
+        </div>
+      )}
 
       {activeTask && (
         <div

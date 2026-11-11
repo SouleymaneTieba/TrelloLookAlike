@@ -1602,7 +1602,7 @@ function Tasks() {
                             isUpdating ||
                             isDeleting
                           }
-                          className="flex items-center gap-2 rounded-lg border border-[#1C292D] px-3 py-2 text-xs font-medium text-[#94A3A6] transition hover:border-[#B6FF00] hover:bg-[#152400] hover:text-[#B6FF00]"
+                          className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-[#94A3A6] transition hover:bg-[#10191C] hover:text-[#B6FF00]"
                         >
 
                           <Pencil size={14} />
@@ -1626,7 +1626,7 @@ function Tasks() {
                             isDeleting ||
                             isUpdating
                           }
-                          className="flex items-center gap-2 rounded-lg border border-red-900/50 px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-950/30 disabled:opacity-50"
+                          className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-[#94A3A6] transition hover:bg-red-600 hover:text-white disabled:opacity-50"
                         >
 
                           <Trash2 size={14} />
@@ -1826,6 +1826,7 @@ function Tasks() {
                       name="assigned_to"
                       value={formData.assigned_to}
                       onChange={handleChange}
+                      required
                       className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
                     >
 
@@ -1884,6 +1885,7 @@ function Tasks() {
                     name="priority"
                     value={formData.priority}
                     onChange={handleChange}
+                    required
                     className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
                   >
 
@@ -1911,11 +1913,11 @@ function Tasks() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de début</label>
-                    <input name="start_date" type="date" value={formData.start_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                    <input name="start_date" type="date" value={formData.start_date} onChange={handleChange} required className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de fin</label>
-                    <input name="end_date" type="date" min={formData.start_date || undefined} value={formData.end_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                    <input name="end_date" type="date" min={formData.start_date || undefined} value={formData.end_date} onChange={handleChange} required className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
                   </div>
                 </div>
 

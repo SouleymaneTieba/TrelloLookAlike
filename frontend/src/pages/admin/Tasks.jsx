@@ -766,7 +766,7 @@ function Tasks() {
                     onClick={() =>
                       handleOpenEdit(task)
                     }
-                    className="rounded-lg p-2 text-[#647276] hover:bg-[#10191C] hover:text-[#B6FF00]"
+                    className="rounded-lg p-2 text-[#647276] transition hover:bg-[#10191C] hover:text-[#B6FF00]"
                     title="Modifier"
                   >
 
@@ -779,7 +779,7 @@ function Tasks() {
                     onClick={() =>
                       handleDelete(task)
                     }
-                    className="rounded-lg p-2 text-[#647276] hover:bg-red-950/30 hover:text-red-400"
+                    className="rounded-lg p-2 text-[#647276] transition hover:bg-red-600 hover:text-white"
                     title="Supprimer"
                   >
 
@@ -940,6 +940,7 @@ function Tasks() {
                   value={form.assigned_to}
                   onChange={handleChange}
                   disabled={!selectedProject}
+                  required={!editingTask}
                   className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none disabled:cursor-not-allowed disabled:opacity-50 focus:border-[#B6FF00]"
                 >
 
@@ -1010,6 +1011,7 @@ function Tasks() {
                     name="status"
                     value={form.status}
                     onChange={handleChange}
+                    required={!editingTask}
                     className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
                   >
 
@@ -1045,6 +1047,7 @@ function Tasks() {
                     name="priority"
                     value={form.priority}
                     onChange={handleChange}
+                    required={!editingTask}
                     className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
                   >
 
@@ -1073,11 +1076,11 @@ function Tasks() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="admin-task-start-date" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de début</label>
-                  <input id="admin-task-start-date" name="start_date" type="date" value={form.start_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                  <input id="admin-task-start-date" name="start_date" type="date" value={form.start_date} onChange={handleChange} required={!editingTask} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
                 </div>
                 <div>
                   <label htmlFor="admin-task-end-date" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de fin</label>
-                  <input id="admin-task-end-date" name="end_date" type="date" min={form.start_date || undefined} value={form.end_date} onChange={handleChange} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
+                  <input id="admin-task-end-date" name="end_date" type="date" min={form.start_date || undefined} value={form.end_date} onChange={handleChange} required={!editingTask} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]" />
                 </div>
               </div>
 

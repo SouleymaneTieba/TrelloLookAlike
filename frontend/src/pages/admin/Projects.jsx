@@ -1247,7 +1247,7 @@ function Projects() {
                             onClick={() => handleEditFeature(feature)}
                             aria-label={`Modifier la fonctionnalité ${feature.title}`}
                             title="Modifier"
-                            className="rounded-lg p-2 text-[#94A3A6] transition hover:bg-[#1C292D] hover:text-orange-300"
+                            className="rounded-lg p-2 text-[#94A3A6] transition hover:bg-[#10191C] hover:text-orange-300"
                           >
                             <Edit3 size={15} />
                           </button>
@@ -1257,7 +1257,7 @@ function Projects() {
                             disabled={deletingFeatureId === feature.id}
                             aria-label={`Supprimer la fonctionnalité ${feature.title}`}
                             title="Supprimer"
-                            className="rounded-lg p-2 text-[#94A3A6] transition hover:bg-red-950/40 hover:text-red-400 disabled:opacity-50"
+                            className="rounded-lg p-2 text-[#94A3A6] transition hover:bg-red-600 hover:text-white disabled:opacity-50"
                           >
                             <Trash2 size={15} className={deletingFeatureId === feature.id ? "animate-pulse" : ""} />
                           </button>
@@ -1339,10 +1339,10 @@ function Projects() {
                             </div>
                           </div>
                           <div className="flex shrink-0 items-center gap-1 self-center">
-                          <button type="button" onClick={() => handleEditFeatureTask(task)} aria-label={`Modifier ${task.title}`} title="Modifier" className="rounded-lg p-1.5 text-[#94A3A6] hover:bg-[#1C292D] hover:text-orange-300">
+                          <button type="button" onClick={() => handleEditFeatureTask(task)} aria-label={`Modifier ${task.title}`} title="Modifier" className="rounded-lg p-1.5 text-[#94A3A6] transition hover:bg-[#10191C] hover:text-orange-300">
                             <Edit3 size={14} />
                           </button>
-                          <button type="button" onClick={() => handleDeleteFeatureTask(task)} disabled={deletingFeatureTaskId === task.id} aria-label={`Supprimer ${task.title}`} title="Supprimer" className="rounded-lg p-1.5 text-[#94A3A6] hover:bg-red-950/40 hover:text-red-400 disabled:opacity-50">
+                          <button type="button" onClick={() => handleDeleteFeatureTask(task)} disabled={deletingFeatureTaskId === task.id} aria-label={`Supprimer ${task.title}`} title="Supprimer" className="rounded-lg p-1.5 text-[#94A3A6] transition hover:bg-red-600 hover:text-white disabled:opacity-50">
                             <Trash2 size={14} className={deletingFeatureTaskId === task.id ? "animate-pulse" : ""} />
                           </button>
                           </div>
@@ -1687,7 +1687,7 @@ function Projects() {
                 </div>}
                 <div>
                   <label htmlFor="admin-feature-task-priority" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Priorité</label>
-                  <select id="admin-feature-task-priority" value={taskForm.priority} onChange={(event) => setTaskForm((form) => ({ ...form, priority: event.target.value }))} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-orange-500">
+                  <select id="admin-feature-task-priority" value={taskForm.priority} onChange={(event) => setTaskForm((form) => ({ ...form, priority: event.target.value }))} required className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-orange-500">
                     <option value="LOW">Faible</option>
                     <option value="MEDIUM">Moyenne</option>
                     <option value="HIGH">Haute</option>
@@ -1696,20 +1696,20 @@ function Projects() {
                 </div>
                 <div>
                   <label htmlFor="admin-feature-task-assignee" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Assigner à</label>
-                  <select id="admin-feature-task-assignee" value={taskForm.assigned_to} onChange={(event) => setTaskForm((form) => ({ ...form, assigned_to: event.target.value }))} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-orange-500">
-                    <option value="">Non assignée</option>
+                  <select id="admin-feature-task-assignee" value={taskForm.assigned_to} onChange={(event) => setTaskForm((form) => ({ ...form, assigned_to: event.target.value }))} required={!editingFeatureTask} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-orange-500">
+                    <option value="">{editingFeatureTask ? "Non assignée" : "Sélectionner un membre"}</option>
                     {associatedMembers.map((member) => <option key={member.id} value={member.id}>{[member.first_name, member.last_name].filter(Boolean).join(" ") || member.username}</option>)}
                   </select>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="admin-feature-task-start-date" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de début (facultative)</label>
-                  <input id="admin-feature-task-start-date" type="date" value={taskForm.start_date} onChange={(event) => setTaskForm((form) => ({ ...form, start_date: event.target.value }))} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-orange-500" />
+                  <label htmlFor="admin-feature-task-start-date" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de début</label>
+                  <input id="admin-feature-task-start-date" type="date" value={taskForm.start_date} onChange={(event) => setTaskForm((form) => ({ ...form, start_date: event.target.value }))} required={!editingFeatureTask} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-orange-500" />
                 </div>
                 <div>
-                  <label htmlFor="admin-feature-task-end-date" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de fin (facultative)</label>
-                  <input id="admin-feature-task-end-date" type="date" min={taskForm.start_date || undefined} value={taskForm.end_date} onChange={(event) => setTaskForm((form) => ({ ...form, end_date: event.target.value }))} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-orange-500" />
+                  <label htmlFor="admin-feature-task-end-date" className="mb-2 block text-sm font-medium text-[#F1F5F2]">Date de fin</label>
+                  <input id="admin-feature-task-end-date" type="date" min={taskForm.start_date || undefined} value={taskForm.end_date} onChange={(event) => setTaskForm((form) => ({ ...form, end_date: event.target.value }))} required={!editingFeatureTask} className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-orange-500" />
                 </div>
               </div>
               <div className="flex justify-end gap-3 border-t border-[#1C292D] pt-4">
