@@ -1,6 +1,7 @@
 import {
   Bell,
   FolderKanban,
+  GitBranch,
   LayoutDashboard,
   LogOut,
   UserRound,
@@ -54,6 +55,12 @@ function AdminLayout() {
       name: "Projets",
       path: "/admin/projects",
       icon: FolderKanban,
+    },
+
+    {
+      name: "GitLab",
+      path: "/admin/gitlab",
+      icon: GitBranch,
     },
 
   ];
@@ -190,6 +197,11 @@ function AdminLayout() {
             event.data
           );
 
+        window.dispatchEvent(
+          new CustomEvent("app:notification-received", {
+            detail: notification,
+          })
+        );
 
         console.log(
           "Nouvelle notification Admin :",

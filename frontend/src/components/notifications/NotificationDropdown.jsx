@@ -4,6 +4,7 @@ import {
   Check,
   CheckCheck,
   ExternalLink,
+  GitBranch,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
@@ -73,6 +74,27 @@ function NotificationDropdown({
     fetchNotifications();
 
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleIncomingNotification = (event) => {
+      const notification = event.detail;
+      if (!notification?.id) return;
+
+      setNotifications((current) => [
+        notification,
+        ...current.filter((item) => item.id !== notification.id),
+      ]);
+    };
+
+    window.addEventListener(
+      "app:notification-received",
+      handleIncomingNotification
+    );
+    return () => window.removeEventListener(
+      "app:notification-received",
+      handleIncomingNotification
+    );
+  }, []);
 
 
   // ==================================================
@@ -174,12 +196,23 @@ function NotificationDropdown({
 
     onClose();
 
-    if (notification.link) {
+    if (!notification.link) return;
 
-      navigate(
-        notification.link
-      );
+    if (notification.link.startsWith("/")) {
+      navigate(notification.link);
+      return;
+    }
 
+    try {
+      const target = new URL(notification.link);
+      if (target.protocol === "http:" || target.protocol === "https:") {
+        window.location.assign(target.href);
+      } else {
+        setError("Le lien de cette notification n’est pas valide.");
+      }
+    } catch (error) {
+      console.error("Lien de notification invalide :", error);
+      setError("Le lien de cette notification n’est pas valide.");
     }
 
   };
@@ -386,10 +419,11 @@ function NotificationDropdown({
 
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#152400]">
 
-                    <Bell
-                      size={16}
-                      className="text-[#B6FF00]"
-                    />
+                    {notification.notification_type === "GITLAB_PUSH" ? (
+                      <GitBranch size={16} className="text-[#B6FF00]" />
+                    ) : (
+                      <Bell size={16} className="text-[#B6FF00]" />
+                    )}
 
                   </div>
 

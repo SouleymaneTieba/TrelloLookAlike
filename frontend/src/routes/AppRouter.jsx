@@ -10,6 +10,7 @@ import AdminTeams from "../pages/admin/Teams";
 import AdminRoles from "../pages/admin/Roles";
 import AdminTasks from "../pages/admin/Tasks";
 import AdminProjects from "../pages/admin/Projects";
+import AdminGitLab from "../pages/admin/GitLab";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Projects from "../pages/Projects";
@@ -173,6 +174,11 @@ function AppRouter() {
           <Route
             path="/admin/projects"
             element={<AdminProjects />}
+          />
+
+          <Route
+            path="/admin/gitlab"
+            element={<AdminGitLab />}
           />
 
 

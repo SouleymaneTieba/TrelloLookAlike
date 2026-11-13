@@ -45,6 +45,11 @@ class Notification(models.Model):
             "Système",
         )
 
+        GITLAB_PUSH = (
+            "GITLAB_PUSH",
+            "Push GitLab",
+        )
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

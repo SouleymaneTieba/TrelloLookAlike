@@ -352,7 +352,7 @@ function ProjectTaskBoard({
                       }}
                       onClick={() => setDetailTaskId(task.id)}
                       title={canDrag ? "Cliquer pour afficher les détails · Glisser pour déplacer" : "Cliquer pour afficher les détails"}
-                      className={`rounded-xl border border-[#1C292D] bg-[#0B1215] p-1 transition hover:border-orange-300 hover:bg-[#FFF3EB] ${
+                      className={`group rounded-xl border border-[#1C292D] bg-[#0B1215] p-1 transition hover:border-orange-300 hover:bg-[#FFF3EB] ${
                         canDrag ? "cursor-grab active:cursor-grabbing" : ""
                       } ${draggedTaskId === task.id ? "opacity-50" : ""} ${
                         isHighlighted ? "border-orange-400 bg-orange-500/10 ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/10" : ""
@@ -360,19 +360,19 @@ function ProjectTaskBoard({
                     >
                       <div className="flex min-w-0 items-center gap-2">
                         {canDrag && (
-                          <GripVertical size={16} className="shrink-0 text-[#647276]" aria-hidden="true" />
+                          <GripVertical size={16} className="shrink-0 text-[#647276] group-hover:text-orange-700" aria-hidden="true" />
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 items-center gap-2">
                             <button
                               type="button"
                               onClick={() => setDetailTaskId(task.id)}
-                              className={`min-w-0 flex-1 truncate text-left text-sm font-semibold hover:text-orange-300 ${isDone ? "text-[#647276] line-through" : "text-[#F1F5F2]"}`}
+                              className={`min-w-0 flex-1 truncate text-left text-sm font-semibold group-hover:text-orange-700 ${isDone ? "text-[#647276] line-through" : "text-[#F1F5F2]"}`}
                             >
                               {task.title}
                             </button>
                             {taskDate && (
-                              <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#94A3A6]">
+                              <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#94A3A6] group-hover:text-orange-700">
                                 <CalendarDays size={12} aria-hidden="true" />
                                 Échéance : {formatDate(taskDate)}
                               </span>
@@ -385,7 +385,7 @@ function ProjectTaskBoard({
                               }}
                               aria-label={`Afficher les commentaires de ${task.title}`}
                               title="Commentaires"
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#94A3A6] transition hover:bg-orange-500/10 hover:text-orange-300"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#94A3A6] transition hover:bg-orange-500/10 hover:text-orange-700 group-hover:text-orange-700"
                             >
                               <MessageCircle size={15} />
                             </button>
@@ -412,11 +412,11 @@ function ProjectTaskBoard({
             aria-modal="true"
             aria-labelledby="task-details-title"
             onClick={(event) => event.stopPropagation()}
-            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#1C292D] bg-[#0B1215] shadow-2xl"
+            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#26363A] bg-[#0B1215] shadow-2xl shadow-black/40"
           >
-            <header className="flex items-start justify-between gap-4 border-b border-[#1C292D] px-5 py-4 sm:px-6">
+            <header className="flex items-start justify-between gap-4 border-b border-[#1C292D] bg-[#10191C] px-5 py-4 sm:px-6">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-orange-400">Détails de la tâche</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#B6FF00]">Détails de la tâche</p>
                 <h3 id="task-details-title" className="mt-1 break-words text-lg font-semibold text-[#F1F5F2]">
                   {detailTask.title}
                 </h3>
@@ -425,21 +425,19 @@ function ProjectTaskBoard({
                 type="button"
                 onClick={() => setDetailTaskId(null)}
                 aria-label="Fermer les détails de la tâche"
-                className="rounded-lg p-2 text-[#647276] transition hover:bg-[#10191C] hover:text-white"
+                className="rounded-lg p-2 text-[#94A3A6] transition hover:bg-[#1C292D] hover:text-[#F1F5F2]"
               >
                 <X size={20} />
               </button>
             </header>
 
             <div className="space-y-5 p-5 sm:p-6">
-              {detailTask.description && (
-                <div>
-                  <h4 className="mb-2 text-sm font-semibold text-[#94A3A6]">Description</h4>
-                  <p className="whitespace-pre-wrap break-words text-sm leading-6 text-[#CBD5D7]">
-                    {detailTask.description}
-                  </p>
-                </div>
-              )}
+              <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4">
+                <h4 className="mb-2 text-sm font-semibold text-[#94A3A6]">Description</h4>
+                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-[#CBD5D7]">
+                  {detailTask.description?.trim() || "Aucune description"}
+                </p>
+              </div>
 
               <div className="flex flex-wrap gap-2">
                 <span className={`rounded-full border px-3 py-1 text-xs font-medium ${STATUS_STYLES[detailTask.status] || STATUS_STYLES.TODO}`}>
@@ -450,38 +448,38 @@ function ProjectTaskBoard({
                 </span>
               </div>
 
-              <dl className="grid gap-4 text-sm sm:grid-cols-2">
+              <dl className="grid gap-3 text-sm sm:grid-cols-2">
                 {showTaskOwners && (
                   <>
-                    <div>
+                    <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
                       <dt className="text-xs text-[#647276]">Projet</dt>
                       <dd className="mt-1 text-[#CBD5D7]">{detailTask.project_name || project.name}</dd>
                     </div>
                     {detailTask.feature_title && (
-                      <div>
+                      <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
                         <dt className="text-xs text-[#647276]">Fonctionnalité</dt>
                         <dd className="mt-1 text-[#CBD5D7]">{detailTask.feature_title}</dd>
                       </div>
                     )}
-                    <div>
+                    <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
                       <dt className="text-xs text-[#647276]">Assignée à</dt>
                       <dd className="mt-1 text-[#CBD5D7]">{detailTask.assigned_username || "Non assignée"}</dd>
                     </div>
-                    <div>
+                    <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
                       <dt className="text-xs text-[#647276]">Créée par</dt>
                       <dd className="mt-1 text-[#CBD5D7]">{detailTask.created_by_username || "Inconnu"}</dd>
                     </div>
                   </>
                 )}
                 {detailTask.start_date && (
-                  <div>
+                  <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
                     <dt className="text-xs text-[#647276]">Date de début</dt>
                     <dd className="mt-1 text-[#CBD5D7]">{formatDate(detailTask.start_date)}</dd>
                   </div>
                 )}
                 {(detailTask.end_date || detailTask.deadline) && (
-                  <div>
-                    <dt className="text-xs text-[#647276]">Date de fin</dt>
+                  <div className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
+                    <dt className="text-xs text-[#647276]">Échéance</dt>
                     <dd className="mt-1 text-[#CBD5D7]">{formatDate(detailTask.end_date || detailTask.deadline)}</dd>
                   </div>
                 )}

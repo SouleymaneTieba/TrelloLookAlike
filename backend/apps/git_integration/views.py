@@ -3,13 +3,196 @@ import hmac
 import json
 
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, identify_hasher, make_password
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework import permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.notifications.models import Notification
 from apps.notifications.services import NotificationService
 
 from .models import GitRepository
+from .serializers import GitLabRepositoryConfigSerializer
+
+
+def gitlab_token_matches(provided_token, stored_token):
+    try:
+        identify_hasher(stored_token)
+    except ValueError:
+        return hmac.compare_digest(provided_token, stored_token)
+    return check_password(provided_token, stored_token)
+
+
+class GitLabRepositoryConfigView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        repositories = (
+            GitRepository.objects
+            .select_related("project")
+            .order_by("project__name")
+        )
+        return Response([
+            {
+                "project": repository.project_id,
+                "project_name": repository.project.name,
+                "provider": repository.provider,
+                "owner": repository.owner,
+                "name": repository.name,
+                "url": repository.url,
+                "is_active": repository.is_active,
+                "has_webhook_secret": bool(repository.webhook_secret),
+            }
+            for repository in repositories
+        ])
+
+    def post(self, request):
+        serializer = GitLabRepositoryConfigSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
+        defaults = {
+            "provider": GitRepository.Provider.GITLAB,
+            "owner": values["repository_owner"],
+            "name": values["repository_name"],
+            "url": values["url"],
+            "is_active": values["is_active"],
+        }
+        if values.get("webhook_secret"):
+            defaults["webhook_secret"] = make_password(
+                values["webhook_secret"]
+            )
+
+        repository, created = GitRepository.objects.update_or_create(
+            project=values["project"],
+            defaults=defaults,
+        )
+        return Response(
+            {
+                "project": repository.project_id,
+                "project_name": repository.project.name,
+                "provider": repository.provider,
+                "owner": repository.owner,
+                "name": repository.name,
+                "url": repository.url,
+                "is_active": repository.is_active,
+                "has_webhook_secret": bool(repository.webhook_secret),
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class GitLabRepositoryConfigDetailView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def delete(self, request, project_id):
+        deleted_count, _ = GitRepository.objects.filter(
+            project_id=project_id,
+        ).delete()
+        if not deleted_count:
+            return Response(
+                {"detail": "Aucun dépôt n’est associé à ce projet."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@csrf_exempt
+def gitlab_webhook(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+
+    project_data = payload.get("project")
+    if not isinstance(project_data, dict):
+        project_data = payload.get("repository")
+    if not isinstance(project_data, dict):
+        return JsonResponse({"error": "Repository information missing"}, status=400)
+
+    repository_path = project_data.get("path_with_namespace")
+    if not isinstance(repository_path, str) or "/" not in repository_path:
+        return JsonResponse({"error": "Repository information missing"}, status=400)
+
+    owner, repository_name = repository_path.rsplit("/", 1)
+    git_repository = (
+        GitRepository.objects
+        .select_related("project")
+        .filter(
+            provider=GitRepository.Provider.GITLAB,
+            owner=owner,
+            name=repository_name,
+            is_active=True,
+        )
+        .first()
+    )
+    provided_token = request.headers.get("X-Gitlab-Token", "")
+    if (
+        git_repository is None
+        or not provided_token
+        or not gitlab_token_matches(
+            provided_token,
+            git_repository.webhook_secret,
+        )
+    ):
+        return JsonResponse({"error": "Invalid webhook token"}, status=403)
+
+    event = request.headers.get("X-Gitlab-Event", "")
+    if event != "Push Hook":
+        return JsonResponse({
+            "success": True,
+            "event": event,
+            "message": "Event received but not handled.",
+        })
+
+    ref = payload.get("ref", "")
+    branch = (
+        ref.removeprefix("refs/heads/")
+        if isinstance(ref, str)
+        else "inconnue"
+    ) or "inconnue"
+    commits = payload.get("commits")
+    commits = commits if isinstance(commits, list) else []
+    commit_count = payload.get("total_commits_count")
+    if (
+        not isinstance(commit_count, int)
+        or isinstance(commit_count, bool)
+        or commit_count < 0
+    ):
+        commit_count = len(commits)
+
+    author_name = (
+        payload.get("user_name")
+        or payload.get("user_username")
+        or "Un utilisateur"
+    )
+    commit_word = "commit" if commit_count == 1 else "commits"
+    message = (
+        f"{author_name} a poussé {commit_count} {commit_word} "
+        f"sur la branche « {branch} »."
+    )
+    notify_project_members(
+        git_repository.project,
+        title=f"Nouveau push — {git_repository.name}",
+        message=message,
+        link=git_repository.url,
+        notification_type=Notification.NotificationType.GITLAB_PUSH,
+    )
+    return JsonResponse({
+        "success": True,
+        "event": "push",
+        "repository": f"{owner}/{repository_name}",
+        "project": git_repository.project.name,
+        "branch": branch,
+        "commits": commit_count,
+    })
 
 
 # ======================================================
@@ -227,11 +410,17 @@ def github_webhook(request):
 # TRAITEMENT PUSH
 # ======================================================
 
-def notify_project_members(project, title, message, link):
-    for member in project.members.all():
+def notify_project_members(
+    project,
+    title,
+    message,
+    link,
+    notification_type=Notification.NotificationType.SYSTEM,
+):
+    for member in project.members.filter(is_active=True):
         NotificationService.create(
             user=member,
-            notification_type=Notification.NotificationType.SYSTEM,
+            notification_type=notification_type,
             title=title,
             message=message,
             link=link,

@@ -164,6 +164,12 @@ function DashboardLayout() {
             event.data
           );
 
+        window.dispatchEvent(
+          new CustomEvent("app:notification-received", {
+            detail: notification,
+          })
+        );
+
         console.log(
           "Nouvelle notification :",
           notification
