@@ -122,7 +122,11 @@ class TaskPermission(permissions.BasePermission):
 class FeaturePermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated)
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user.is_staff or request.user.is_superuser
 
     def has_object_permission(self, request, view, obj):
         user = request.user
@@ -135,7 +139,7 @@ class FeaturePermission(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return is_member or is_manager
 
-        return is_manager
+        return False
 
 
 class AvailabilityPermission(

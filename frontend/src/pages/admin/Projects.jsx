@@ -60,6 +60,7 @@ function Projects() {
   const [membersError, setMembersError] = useState("");
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [projectTasks, setProjectTasks] = useState([]);
+  const [taskSearch, setTaskSearch] = useState("");
   const [highlightedMemberId, setHighlightedMemberId] = useState(null);
   const [projectView, setProjectView] = useState("tasks");
   const [membersSidebarOpen, setMembersSidebarOpen] = useState(true);
@@ -112,6 +113,20 @@ function Projects() {
         ((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100
       )
     : 0;
+  const normalizedTaskSearch = taskSearch.trim().toLocaleLowerCase("fr");
+  const matchesTaskSearch = (task) => [
+    task.title,
+    task.description,
+    task.assigned_username,
+    task.created_by_username,
+  ].some((value) => (value || "").toLocaleLowerCase("fr").includes(normalizedTaskSearch));
+  const visibleProjectFeatures = projectFeatures.filter((feature) => (
+    !normalizedTaskSearch
+    || feature.title.toLocaleLowerCase("fr").includes(normalizedTaskSearch)
+    || projectTasks.some((task) => (
+      Number(task.feature) === Number(feature.id) && matchesTaskSearch(task)
+    ))
+  ));
   const normalizedSearch = search.trim().toLocaleLowerCase("fr");
   const filteredProjects = projects.filter((project) =>
     [project.name, project.description].some((value) =>
@@ -851,22 +866,22 @@ function Projects() {
                           Membres : {associatedMembers.length}
                         </span>
                       </div>
-                      <div className="flex min-w-48 flex-1 items-center gap-3">
-                        <div
-                          className="h-2.5 min-w-16 flex-1 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm"
-                          role="progressbar"
-                          aria-label={`Progression du projet ${selectedProject.name}`}
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                          aria-valuenow={projectProgress}
-                        >
-                          <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${projectProgress}%` }} />
-                        </div>
-                        <span className="shrink-0 text-xs font-semibold text-orange-400">
-                          Progression {projectProgress}%
-                        </span>
-                      </div>
                     </div>
+                  </div>
+                  <div className="mt-3 flex w-full items-center gap-3">
+                    <div
+                      className="h-2.5 min-w-16 flex-1 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm"
+                      role="progressbar"
+                      aria-label={`Progression du projet ${selectedProject.name}`}
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      aria-valuenow={projectProgress}
+                    >
+                      <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${projectProgress}%` }} />
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold text-orange-400">
+                      Progression {projectProgress}%
+                    </span>
                   </div>
                 </>
               ) : (
@@ -1113,7 +1128,7 @@ function Projects() {
       {selectedProject && (
         <div className="mt-8 flex min-w-0 items-stretch">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3 border-b border-[#1C292D]">
+            <div className="flex flex-col gap-2 border-b border-[#1C292D] sm:flex-row sm:items-center sm:gap-3">
               <nav
                 aria-label="Navigation du projet"
                 role="tablist"
@@ -1148,6 +1163,22 @@ function Projects() {
                   </button>
                 ))}
               </nav>
+              <label className="relative mb-2 block w-full shrink-0 sm:ml-auto sm:w-56 md:w-64">
+                <span className="sr-only">Rechercher une tâche ou une fonctionnalité</span>
+                <Search
+                  size={16}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#647276]"
+                />
+                <input
+                  type="search"
+                  value={taskSearch}
+                  onChange={(event) => setTaskSearch(event.target.value)}
+                  placeholder="Rechercher..."
+                  aria-label="Rechercher une tâche ou une fonctionnalité"
+                  className="w-full rounded-lg border border-[#1C292D] bg-[#0B1215] py-2 pl-9 pr-3 text-sm text-[#F1F5F2] outline-none placeholder:text-[#647276] focus:border-[#B6FF00]"
+                />
+              </label>
             </div>
 
             {projectView === "tasks" ? (
@@ -1168,6 +1199,8 @@ function Projects() {
                   onTaskUpdated={handleProjectTaskUpdated}
                   showTaskOwners={false}
                   commentsReadOnly
+                  searchValue={taskSearch}
+                  hideSearchInput
                 />
               </div>
             ) : (
@@ -1212,12 +1245,14 @@ function Projects() {
                   <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">Chargement des fonctionnalités…</p>
                 ) : projectFeatures.length === 0 ? (
                   <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">Aucune fonctionnalité pour ce projet.</p>
+                ) : visibleProjectFeatures.length === 0 ? (
+                  <p className="rounded-xl border border-[#10191C] bg-[#10191C] p-4 text-sm text-[#647276]">Aucune tâche ou fonctionnalité ne correspond à la recherche.</p>
                 ) : (
                   <div className="grid w-full gap-3">
-                    {projectFeatures.map((feature) => (
+                    {visibleProjectFeatures.map((feature) => (
                       <div
                         key={feature.id}
-                        className={`flex w-full items-center gap-2 rounded-xl border p-3 transition ${
+                        className={`flex w-full items-center gap-2 rounded-xl border p-2 transition ${
                           Number(selectedFeature?.id) === Number(feature.id)
                             ? "border-orange-500 bg-orange-500/10"
                             : "border-[#1C292D] bg-[#10191C] hover:border-orange-500/60 hover:bg-[#141E22]"
@@ -1314,7 +1349,9 @@ function Projects() {
                 ) : !selectedFeature ? (
                   <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">Sélectionnez une fonctionnalité pour afficher ses tâches.</p>
                 ) : (() => {
-                const featureTasks = projectTasks.filter((task) => Number(task.feature) === Number(selectedFeature.id));
+                const featureTasks = projectTasks
+                  .filter((task) => Number(task.feature) === Number(selectedFeature.id))
+                  .filter((task) => !normalizedTaskSearch || matchesTaskSearch(task));
                 return featureTasks.length === 0 ? (
                   <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">Aucune tâche dans cette fonctionnalité.</p>
                 ) : (

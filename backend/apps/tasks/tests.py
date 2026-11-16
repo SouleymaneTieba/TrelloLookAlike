@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.projects.models import Project
+from apps.projects.models import Project, ProjectMemberRole
 from apps.tasks.models import Feature, Task, TaskComment
 from apps.tasks.permissions import TaskPermission
 from apps.teams.models import Role, Team, TeamMember
@@ -138,6 +138,71 @@ class TaskPermissionTests(TestCase):
 				task,
 			)
 		)
+
+
+class ProjectManagerFeatureReadOnlyAPITests(TestCase):
+
+	def setUp(self):
+		self.manager = User.objects.create_user(
+			username="feature_manager",
+			email="feature_manager@example.com",
+		)
+		self.creator = User.objects.create_user(
+			username="feature_creator",
+			email="feature_creator@example.com",
+		)
+		self.role, _ = Role.objects.get_or_create(
+			slug=Role.SLUG_PROJECT_MANAGER,
+			defaults={"label": "Chef de projet"},
+		)
+		self.project = Project.objects.create(
+			name="Projet en lecture seule",
+			created_by=self.creator,
+		)
+		ProjectMemberRole.objects.create(
+			project=self.project,
+			user=self.manager,
+			role=self.role,
+		)
+		self.feature = Feature.objects.create(
+			project=self.project,
+			title="Fonctionnalité visible",
+			created_by=self.creator,
+		)
+		self.client = APIClient()
+		self.client.force_authenticate(user=self.manager)
+
+	def test_project_manager_can_read_project_and_features_without_membership(self):
+		projects_response = self.client.get("/api/projects/")
+		features_response = self.client.get("/api/features/")
+
+		self.assertEqual(projects_response.status_code, 200)
+		self.assertEqual(
+			[item["id"] for item in projects_response.data],
+			[self.project.id],
+		)
+		self.assertEqual(features_response.status_code, 200)
+		self.assertEqual(
+			[item["id"] for item in features_response.data],
+			[self.feature.id],
+		)
+
+	def test_project_manager_cannot_create_update_or_delete_features(self):
+		create_response = self.client.post(
+			"/api/features/",
+			{"project": self.project.id, "title": "Nouvelle fonctionnalité"},
+			format="json",
+		)
+		update_response = self.client.patch(
+			f"/api/features/{self.feature.id}/",
+			{"title": "Fonctionnalité modifiée"},
+			format="json",
+		)
+		delete_response = self.client.delete(f"/api/features/{self.feature.id}/")
+
+		self.assertEqual(create_response.status_code, 403)
+		self.assertEqual(update_response.status_code, 403)
+		self.assertEqual(delete_response.status_code, 403)
 
 
 class TaskCommentAPITests(TestCase):

@@ -1,6 +1,17 @@
 import { useRef, useState } from "react";
 
-import { CalendarDays, GripVertical, ListTodo, MessageCircle, Search, Send, X } from "lucide-react";
+import {
+  Ban,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  GripVertical,
+  ListTodo,
+  MessageCircle,
+  Search,
+  Send,
+  X,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 
@@ -32,6 +43,14 @@ const STATUS_LABELS = {
   DONE: "Terminée",
 };
 
+const STATUS_FILTERS = [
+  { status: "ALL", label: "Toutes", icon: ListTodo },
+  { status: "TODO", label: "À faire", icon: ListTodo },
+  { status: "IN_PROGRESS", label: "En cours", icon: Clock3 },
+  { status: "BLOCKED", label: "Bloquées", icon: Ban },
+  { status: "DONE", label: "Terminées", icon: CheckCircle2 },
+];
+
 function ProjectTaskBoard({
   project,
   tasks,
@@ -43,11 +62,13 @@ function ProjectTaskBoard({
   highlightedMemberId = null,
   highlightedMemberName = "",
   commentsReadOnly = false,
+  searchValue,
+  onSearchChange,
+  hideSearchInput = false,
 }) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [updatingTaskId, setUpdatingTaskId] = useState(null);
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverStatus, setDragOverStatus] = useState(null);
@@ -67,23 +88,29 @@ function ProjectTaskBoard({
   const boardTasks = projectTasks.filter(
     (task) => selectedTaskIds.includes(Number(task.id))
   );
+  const activeSearch = searchValue ?? search;
   const detailTask = boardTasks.find((task) => Number(task.id) === Number(detailTaskId));
   const highlightedTaskCount = highlightedMemberId === null
     ? 0
     : boardTasks.filter((task) => Number(task.assigned_to) === Number(highlightedMemberId)).length;
-  const filteredTasks = boardTasks.filter((task) => {
-    const searchValue = search.trim().toLocaleLowerCase("fr");
-    const matchesSearch = [
+  const searchedTasks = boardTasks.filter((task) => {
+    const normalizedSearch = activeSearch.trim().toLocaleLowerCase("fr");
+    const matchesSearch = !normalizedSearch || [
       task.title,
       task.description,
       task.assigned_username,
       task.created_by_username,
-    ].some((value) => (value || "").toLocaleLowerCase("fr").includes(searchValue));
+    ].some((value) => (value || "").toLocaleLowerCase("fr").includes(normalizedSearch));
 
-    return matchesSearch
-      && (statusFilter === "ALL" || task.status === statusFilter)
-      && (priorityFilter === "ALL" || task.priority === priorityFilter);
+    return matchesSearch;
   });
+  const filteredTasks = searchedTasks.filter(
+    (task) => statusFilter === "ALL" || task.status === statusFilter
+  );
+  const statusCounts = searchedTasks.reduce((counts, task) => {
+    counts[task.status] = (counts[task.status] || 0) + 1;
+    return counts;
+  }, {});
 
   const canMoveTask = (task) => {
     if (user?.is_staff || user?.is_superuser) {
@@ -196,70 +223,77 @@ function ProjectTaskBoard({
   );
 
   return (
-    <section aria-labelledby="project-kanban-title" className="mt-5">
-      <div className="mb-4 flex items-center gap-2">
-        <ListTodo size={19} className="text-orange-500" />
-        <h3 id="project-kanban-title" className="text-lg font-semibold text-[#F1F5F2]">
-          Tableau des tâches
-        </h3>
-      </div>
+    <section aria-label="Tableau des tâches" className="mt-5">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 xl:justify-end">
+          {!hideSearchInput && (
+            <label className="relative block w-full sm:w-44">
+              <span className="sr-only">Rechercher une tâche</span>
+              <Search
+                size={15}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#647276]"
+              />
+              <input
+                type="search"
+                value={activeSearch}
+                onChange={(event) => {
+                  if (onSearchChange) {
+                    onSearchChange(event.target.value);
+                  } else {
+                    setSearch(event.target.value);
+                  }
+                }}
+                placeholder="Rechercher..."
+                aria-label="Rechercher une tâche"
+                className="w-full rounded-full border border-[#1C292D] bg-[#0B1215] py-2 pl-9 pr-3 text-xs text-[#F1F5F2] outline-none placeholder:text-[#647276] focus:border-orange-500"
+              />
+            </label>
+          )}
 
-      <div className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-4">
-        <div className="flex flex-col gap-4 xl:flex-row">
-          <div className="relative flex-1">
-            <Search
-              size={18}
-              aria-hidden="true"
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#647276]"
-            />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Rechercher une tâche..."
-              aria-label="Rechercher une tâche"
-              className="w-full rounded-xl border border-[#1C292D] bg-[#10191C] py-3 pl-10 pr-4 text-sm text-[#F1F5F2] outline-none placeholder:text-[#647276] focus:border-[#B6FF00]"
-            />
+          <div
+            role="group"
+            aria-label="Filtrer les tâches par statut"
+            className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[#1C292D] bg-[#0B1215] p-1"
+          >
+            {STATUS_FILTERS.map(({ status, label, icon: Icon }) => {
+              const isSelected = statusFilter === status;
+              const count = status === "ALL"
+                ? searchedTasks.length
+                : statusCounts[status] || 0;
+
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setStatusFilter(status)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    isSelected
+                      ? "bg-orange-500/15 text-orange-300"
+                      : "text-[#94A3A6] hover:bg-[#10191C] hover:text-[#F1F5F2]"
+                  }`}
+                >
+                  <Icon size={14} aria-hidden="true" />
+                  <span>{label}</span>
+                  <span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] ${
+                    isSelected
+                      ? "bg-orange-500 text-black"
+                      : "bg-[#10191C] text-[#94A3A6]"
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            aria-label="Filtrer par statut"
-            className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
-          >
-            <option value="ALL">Tous les statuts</option>
-            <option value="TODO">À faire</option>
-            <option value="IN_PROGRESS">En cours</option>
-            <option value="BLOCKED">Bloquées</option>
-            <option value="DONE">Terminées</option>
-          </select>
-
-          <select
-            value={priorityFilter}
-            onChange={(event) => setPriorityFilter(event.target.value)}
-            aria-label="Filtrer par priorité"
-            className="rounded-xl border border-[#1C292D] bg-[#10191C] px-4 py-3 text-sm text-[#F1F5F2] outline-none focus:border-[#B6FF00]"
-          >
-            <option value="ALL">Toutes les priorités</option>
-            <option value="LOW">Faible</option>
-            <option value="MEDIUM">Moyenne</option>
-            <option value="HIGH">Haute</option>
-            <option value="URGENT">Urgente</option>
-          </select>
+          {highlightedMemberId !== null && (
+            <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-300">
+              {highlightedTaskCount} tâche(s) assignée(s) à {highlightedMemberName || "cet utilisateur"}
+            </span>
+          )}
         </div>
-      </div>
-
-      <div className="mt-4 flex items-center gap-2">
-        <ListTodo size={18} className="text-[#B6FF00]" />
-        <span className="text-sm text-[#94A3A6]">
-          {filteredTasks.length} tâche(s) affichée(s) · {boardTasks.length} dans le tableau
-        </span>
-        {highlightedMemberId !== null && (
-          <span className="ml-auto rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-300">
-            {highlightedTaskCount} tâche(s) assignée(s) à {highlightedMemberName || "cet utilisateur"}
-          </span>
-        )}
       </div>
 
       {tasksError ? (

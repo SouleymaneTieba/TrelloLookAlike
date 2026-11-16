@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -55,7 +56,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 "created_by",
             )
             .prefetch_related("members")
-            .filter(members=user)
+            .filter(Q(members=user) | Q(member_roles__user=user))
             .distinct()
             .order_by("-created_at")
         )

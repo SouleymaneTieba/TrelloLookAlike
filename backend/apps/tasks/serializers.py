@@ -53,9 +53,9 @@ class FeatureSerializer(serializers.ModelSerializer):
         project = attrs.get("project", getattr(self.instance, "project", None))
         if request and project:
             is_admin = request.user.is_staff or request.user.is_superuser
-            if not is_admin and not user_is_project_manager(project, request.user):
+            if not is_admin:
                 raise serializers.ValidationError({
-                    "project": "Seul le chef de projet peut créer ou modifier une fonctionnalité."
+                    "project": "Seul un administrateur peut créer ou modifier une fonctionnalité."
                 })
         return attrs
 

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from rest_framework import permissions, status, viewsets
@@ -44,7 +45,9 @@ class FeatureViewSet(viewsets.ModelViewSet):
         if user.is_staff or user.is_superuser:
             return queryset.all().order_by("-created_at")
 
-        return queryset.filter(project__members=user).distinct().order_by("-created_at")
+        return queryset.filter(
+            Q(project__members=user) | Q(project__member_roles__user=user)
+        ).distinct().order_by("-created_at")
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

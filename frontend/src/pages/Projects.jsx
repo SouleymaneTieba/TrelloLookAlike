@@ -6,15 +6,19 @@ import {
   CheckCircle2,
   Clock3,
   FolderKanban,
+  Layers3,
+  ListTodo,
   Search,
   Users,
 } from "lucide-react";
 
 import ProjectTaskBoard from "../components/projects/ProjectTaskBoard";
+import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
 function Projects() {
 
+  const { user } = useAuth();
   const [projects, setProjects] =
     useState([]);
 
@@ -30,6 +34,9 @@ function Projects() {
     useState(null);
 
   const [projectTasks, setProjectTasks] = useState([]);
+  const [projectFeatures, setProjectFeatures] = useState([]);
+  const [projectView, setProjectView] = useState("tasks");
+  const [selectedFeatureId, setSelectedFeatureId] = useState(null);
   const [loadingProjectTasks, setLoadingProjectTasks] = useState(false);
   const [projectTasksError, setProjectTasksError] = useState("");
 
@@ -84,6 +91,12 @@ function Projects() {
         ((selectedProject.completed_task_count ?? 0) / selectedProject.task_count) * 100
       )
     : 0;
+  const isProjectManager = selectedProject?.project_manager_ids?.some(
+    (managerId) => Number(managerId) === Number(user?.id)
+  ) ?? false;
+  const selectedFeature = projectFeatures.find(
+    (feature) => Number(feature.id) === Number(selectedFeatureId)
+  );
 
 
   useEffect(() => {
@@ -91,6 +104,7 @@ function Projects() {
 
     if (!selectedProjectId) {
       setProjectTasks([]);
+      setProjectFeatures([]);
       setProjectTasksError("");
       return;
     }
@@ -99,16 +113,20 @@ function Projects() {
     setLoadingProjectTasks(true);
     setProjectTasksError("");
 
-    api.get("/tasks/")
-      .then((tasksResponse) => {
+    Promise.all([
+      api.get("/tasks/"),
+      api.get("/features/"),
+    ])
+      .then(([tasksResponse, featuresResponse]) => {
         if (isMounted) {
           setProjectTasks(tasksResponse.data.filter((task) => Number(task.project) === Number(selectedProjectId)));
+          setProjectFeatures(featuresResponse.data.filter((feature) => Number(feature.project) === Number(selectedProjectId)));
         }
       })
       .catch((requestError) => {
         console.error(requestError);
         if (isMounted) {
-          setProjectTasksError("Impossible de récupérer les tâches de ce projet.");
+          setProjectTasksError("Impossible de récupérer les tâches et les fonctionnalités de ce projet.");
         }
       })
       .finally(() => {
@@ -235,7 +253,11 @@ function Projects() {
             {selectedProject && (
               <button
                 type="button"
-                onClick={() => setSelectedProject(null)}
+                onClick={() => {
+                  setSelectedProject(null);
+                  setProjectView("tasks");
+                  setSelectedFeatureId(null);
+                }}
                 aria-label="Retour aux projets"
                 title="Retour aux projets"
                 className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#1C292D] text-[#94A3A6] transition hover:bg-[#10191C] hover:text-[#F1F5F2]"
@@ -281,22 +303,22 @@ function Projects() {
                           Membres : {selectedProject.member_details?.length ?? selectedProject.members?.length ?? 0}
                         </span>
                       </div>
-                      <div className="flex min-w-48 flex-1 items-center gap-3">
-                        <div
-                          className="h-2.5 min-w-16 flex-1 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm"
-                          role="progressbar"
-                          aria-label={`Progression du projet ${selectedProject.name}`}
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                          aria-valuenow={projectProgress}
-                        >
-                          <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${projectProgress}%` }} />
-                        </div>
-                        <span className="shrink-0 text-xs font-semibold text-orange-400">
-                          Progression {projectProgress}%
-                        </span>
-                      </div>
                     </div>
+                  </div>
+                  <div className="mt-3 flex w-full items-center gap-3">
+                    <div
+                      className="h-2.5 min-w-16 flex-1 overflow-hidden rounded-full border border-white/40 bg-white shadow-sm"
+                      role="progressbar"
+                      aria-label={`Progression du projet ${selectedProject.name}`}
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      aria-valuenow={projectProgress}
+                    >
+                      <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${projectProgress}%` }} />
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold text-orange-400">
+                      Progression {projectProgress}%
+                    </span>
                   </div>
                 </>
               ) : (
@@ -488,7 +510,7 @@ function Projects() {
             </h2>
 
             <p className="mt-2 text-sm text-[#647276]">
-              Vous n'êtes actuellement membre d'aucun projet.
+              Vous n'avez accès à aucun projet pour le moment.
             </p>
 
           </div>
@@ -528,7 +550,11 @@ function Projects() {
                     type="button"
                     key={project.id}
                     className="group w-full cursor-pointer rounded-2xl border border-[#1C292D] bg-[#0B1215] p-5 text-left transition hover:-translate-y-0.5 hover:border-[#304800] focus:outline-none focus:ring-2 focus:ring-[#B6FF00]"
-                    onClick={() => setSelectedProject(project)}
+                    onClick={() => {
+                      setSelectedProject(project);
+                      setProjectView("tasks");
+                      setSelectedFeatureId(null);
+                    }}
                   >
 
 
@@ -679,16 +705,152 @@ function Projects() {
 
       {selectedProject && (
         <div className="mt-8 min-w-0">
-          <ProjectTaskBoard
-            key={selectedProject.id}
-            project={selectedProject}
-            tasks={projectTasks}
-            selectedTaskIds={projectTasks.map((task) => Number(task.id))}
-            loading={loadingProjectTasks}
-            error={projectTasksError}
-            onTaskUpdated={handleProjectTaskUpdated}
-            showTaskOwners={false}
-          />
+          {isProjectManager && (
+            <nav aria-label="Vues du projet" role="tablist" className="flex gap-2 border-b border-[#1C292D]">
+              {[
+                { id: "tasks", label: "Tâches", icon: ListTodo },
+                { id: "features", label: "Fonctionnalités", icon: Layers3 },
+              ].map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={projectView === id}
+                  onClick={() => setProjectView(id)}
+                  className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${
+                    projectView === id
+                      ? "border-orange-500 text-[#F1F5F2]"
+                      : "border-transparent text-[#94A3A6] hover:border-[#647276] hover:text-[#F1F5F2]"
+                  }`}
+                >
+                  <Icon size={16} />
+                  {label}
+                  {id === "features" && (
+                    <span className="rounded bg-[#10191C] px-2 py-0.5 text-xs text-[#94A3A6]">
+                      {projectFeatures.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          )}
+
+          {projectView === "features" && isProjectManager ? (
+            <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.4fr)]">
+              <section aria-labelledby="project-features-heading" className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-4">
+                <h2 id="project-features-heading" className="mb-4 flex items-center gap-2 font-semibold text-[#F1F5F2]">
+                  <Layers3 size={18} className="text-orange-500" />
+                  Fonctionnalités
+                </h2>
+                {projectTasksError ? (
+                  <p role="alert" className="rounded-xl border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-400">
+                    {projectTasksError}
+                  </p>
+                ) : loadingProjectTasks ? (
+                  <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">
+                    Chargement des fonctionnalités…
+                  </p>
+                ) : projectFeatures.length === 0 ? (
+                  <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">
+                    Aucune fonctionnalité dans ce projet.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {projectFeatures.map((feature) => (
+                      <button
+                        key={feature.id}
+                        type="button"
+                        aria-pressed={Number(selectedFeatureId) === Number(feature.id)}
+                        onClick={() => setSelectedFeatureId(feature.id)}
+                        className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition ${
+                          Number(selectedFeatureId) === Number(feature.id)
+                            ? "border-orange-500 bg-orange-500/10"
+                            : "border-[#1C292D] bg-[#10191C] hover:border-orange-500/50"
+                        }`}
+                      >
+                        <Layers3 size={17} className="shrink-0 text-orange-400" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-[#F1F5F2]">{feature.title}</span>
+                          <span className="mt-1 block text-xs text-[#647276]">
+                            {feature.completed_subtask_count}/{feature.subtask_count} tâches terminées
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-xs font-semibold text-orange-300">{feature.progress}%</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section aria-labelledby="project-feature-tasks-heading" className="rounded-2xl border border-[#1C292D] bg-[#0B1215] p-4">
+                <h2 id="project-feature-tasks-heading" className="mb-4 flex items-center gap-2 font-semibold text-[#F1F5F2]">
+                  <ListTodo size={18} className="text-orange-500" />
+                  {selectedFeature ? `Tâches — ${selectedFeature.title}` : "Tâches de la fonctionnalité"}
+                </h2>
+                {projectTasksError ? (
+                  <p role="alert" className="rounded-xl border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-400">
+                    {projectTasksError}
+                  </p>
+                ) : loadingProjectTasks ? (
+                  <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">
+                    Chargement des tâches…
+                  </p>
+                ) : !selectedFeature ? (
+                  <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">
+                    Sélectionnez une fonctionnalité pour afficher ses tâches.
+                  </p>
+                ) : projectTasks.filter((task) => Number(task.feature) === Number(selectedFeature.id)).length === 0 ? (
+                  <p className="rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-sm text-[#647276]">
+                    Aucune tâche dans cette fonctionnalité.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {projectTasks
+                      .filter((task) => Number(task.feature) === Number(selectedFeature.id))
+                      .map((task) => (
+                        <article key={task.id} className="rounded-xl border border-[#1C292D] bg-[#10191C] p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="min-w-0 flex-1 break-words text-sm font-medium text-[#F1F5F2]">
+                              {task.title}
+                            </h3>
+                            <span className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-xs text-orange-300">
+                              {task.status_label || task.status}
+                            </span>
+                          </div>
+                          {task.description && (
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-5 text-[#94A3A6]">
+                              {task.description}
+                            </p>
+                          )}
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#647276]">
+                            <span>Priorité : {task.priority_label || task.priority}</span>
+                            <span>Assignée à : {task.assigned_username || "Non assignée"}</span>
+                            {(task.end_date || task.deadline) && (
+                              <span>
+                                Échéance : {new Date(
+                                  task.end_date ? `${task.end_date}T00:00:00` : task.deadline
+                                ).toLocaleDateString("fr-FR")}
+                              </span>
+                            )}
+                          </div>
+                        </article>
+                      ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : (
+            <ProjectTaskBoard
+              key={selectedProject.id}
+              project={selectedProject}
+              tasks={projectTasks}
+              selectedTaskIds={projectTasks.map((task) => Number(task.id))}
+              loading={loadingProjectTasks}
+              error={projectTasksError}
+              onTaskUpdated={handleProjectTaskUpdated}
+              showTaskOwners={false}
+            />
+          )}
         </div>
       )}
 

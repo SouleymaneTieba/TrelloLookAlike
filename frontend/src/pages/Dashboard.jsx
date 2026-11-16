@@ -251,7 +251,7 @@ function Dashboard() {
                   key={project.id}
                   type="button"
                   onClick={() => navigate("/projects")}
-                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-[#1C292D] bg-[#10191C] p-4 text-left transition hover:border-[#304800]"
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-[#1C292D] bg-[#10191C] p-3 text-left transition hover:border-[#304800]"
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <FolderKanban size={18} className="shrink-0 text-[#B6FF00]" />
